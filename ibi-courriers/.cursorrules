@@ -1,0 +1,34 @@
+# IBI COURRIERS — Cursor Rules
+
+## Projet
+Application desktop Windows pour gestion de courriers.
+Stack : Python 3.11, CustomTkinter, SQLite (sqlite3), ReportLab, bcrypt, PyInstaller.
+L'application doit fonctionner 100% hors ligne, aucun appel réseau au runtime.
+
+## Architecture
+Pattern MVC strict :
+- views/      → interfaces CustomTkinter uniquement
+- services/   → logique métier uniquement  
+- database/   → db.py (connexion) + models.py (tables + requêtes)
+- utils/      → fonctions utilitaires (backup, audit, pdf)
+
+## Règles de code
+- Python 3.11, typage explicite sur toutes les fonctions
+- Jamais de chemins absolus — toujours os.path relatif au fichier main.py
+- Toutes les requêtes SQL dans database/models.py, jamais dans les views
+- Chaque action utilisateur loggée dans audit_log
+- Gestion d'erreurs try/except sur toutes les opérations DB et fichiers
+- Mots de passe toujours hashés avec bcrypt, jamais en clair
+- Variables en français pour coller au domaine métier (expediteur, courrier...)
+- Commentaires en français
+
+## UI CustomTkinter
+- Thème : dark mode, couleur principale #1B2A4A
+- Toujours utiliser CTkFrame, CTkButton, CTkLabel (jamais les widgets Tkinter classiques)
+- Fenêtre principale : 1280x720, non redimensionnable
+- Police : Segoe UI 12 pour le texte, 14 bold pour les titres
+
+## Compatibilité PyInstaller
+- Aucune lib avec appel réseau au runtime
+- Tous les assets référencés via une fonction get_resource_path()
+- Tester régulièrement que le build .exe fonctionne

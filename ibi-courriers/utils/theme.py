@@ -1,0 +1,89 @@
+# -*- coding: utf-8 -*-
+"""Design system centralise (couleurs, polices, espacements)."""
+
+from utils.constants import (
+    COULEURS_ROLE,
+    COULEURS_STATUT,
+    COULEURS_TYPE,
+    COULEURS_URGENCE,
+)
+
+# --- Couleurs structurelles ---
+FOND_PRINCIPAL = "#1B2A4A"
+FOND_CONTENU = "#243656"
+FOND_CARTE = "#1B2A4A"
+FOND_LIGNE_ALT = "#1F3154"
+FOND_LIGNE = "#1B2A4A"
+FOND_SURVOL = "#2A4068"
+ACCENT = "#2E6BE6"
+ACCENT_HOVER = "#2558C4"
+SECONDAIRE = "#3D5A80"
+TEXTE_PRIMAIRE = "#FFFFFF"
+TEXTE_SECONDAIRE = "#B8C4D9"
+SUCCES = "#6BCB77"
+ERREUR = "#FF6B6B"
+DANGER = "#C0392B"
+SEPARATEUR = "#3D5A80"
+FOND_ERREUR = "#3D2640"
+
+# --- Polices ---
+POLICE_TEXTE = ("Segoe UI", 12)
+POLICE_SOUS_TITRE = ("Segoe UI", 14, "bold")
+POLICE_TITRE_PAGE = ("Segoe UI", 20, "bold")
+POLICE_TITRE_CARTE = ("Segoe UI", 14, "bold")
+POLICE_ENTETE = ("Segoe UI", 12, "bold")
+POLICE_PETIT = ("Segoe UI", 10)
+POLICE_CHIFFRE = ("Segoe UI", 28, "bold")
+
+# --- Espacements ---
+PAD_PAGE = 24
+PAD_SECTION = 16
+PAD_LIGNE = 6
+RAYON_CARTE = 8
+RAYON_MODALE = 12
+HAUTEUR_ENTETE_TABLE = 36
+HAUTEUR_BOUTON = 36
+HAUTEUR_CHAMP = 40
+HAUTEUR_BOUTON_LIGNE = 28
+LARGEUR_SIDEBAR = 220
+
+# Re-export couleurs metier (ne pas dupliquer)
+__all__ = [
+    "FOND_PRINCIPAL",
+    "FOND_CONTENU",
+    "FOND_CARTE",
+    "FOND_LIGNE_ALT",
+    "FOND_LIGNE",
+    "FOND_SURVOL",
+    "ACCENT",
+    "ACCENT_HOVER",
+    "SECONDAIRE",
+    "TEXTE_PRIMAIRE",
+    "TEXTE_SECONDAIRE",
+    "SUCCES",
+    "ERREUR",
+    "DANGER",
+    "SEPARATEUR",
+    "FOND_ERREUR",
+    "POLICE_TEXTE",
+    "POLICE_SOUS_TITRE",
+    "POLICE_TITRE_PAGE",
+    "POLICE_TITRE_CARTE",
+    "POLICE_ENTETE",
+    "POLICE_PETIT",
+    "POLICE_CHIFFRE",
+    "PAD_PAGE",
+    "PAD_SECTION",
+    "PAD_LIGNE",
+    "RAYON_CARTE",
+    "RAYON_MODALE",
+    "HAUTEUR_ENTETE_TABLE",
+    "HAUTEUR_BOUTON",
+    "HAUTEUR_CHAMP",
+    "HAUTEUR_BOUTON_LIGNE",
+    "LARGEUR_SIDEBAR",
+    "COULEURS_STATUT",
+    "COULEURS_URGENCE",
+    "COULEURS_ROLE",
+    "COULEURS_TYPE",
+]
