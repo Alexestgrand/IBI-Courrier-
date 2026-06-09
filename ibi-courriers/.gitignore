@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Donnees locales / runtime
+courriers.db
+uploads/
+exports/
+backups/
+*.db-journal
+
+# PyInstaller
+build/
+dist/
+_test_exe_vierge/
+
+# IDE / outils
+.cursor/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
