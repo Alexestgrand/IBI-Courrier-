@@ -1,7 +1,9 @@
 """Service métier des courriers."""
 
 import os
+import shutil
 import sqlite3
+from datetime import datetime
 from typing import Any
 
 from database import models
@@ -9,10 +11,11 @@ from database.db import get_connection
 from utils.audit import enregistrer_audit
 from utils.constants import TRANSITIONS_PAR_ROLE, TRANSITIONS_VALIDES
 from utils.export_pdf import generer_courrier_sortant
-from utils.exports import ouvrir_fichier_export
+from utils.exports import DOSSIER_EXPORTS, creer_dossier_exports, ouvrir_fichier_export
 from utils.fichiers import copier_piece_jointe
 
 MODULE_COURRIERS = "courriers"
+CORPS_COURRIER_IMPORT_PDF = "(Courrier importé - PDF scanné)"
 
 
 def _transition_autorisee(role: str, ancien: str, nouveau: str) -> bool:
@@ -244,17 +247,35 @@ def generer_numero_sortant() -> str:
             connexion.close()
 
 
+def _copier_pdf_scanne_export(chemin_source: str, numero: str) -> str:
+    """Copie un PDF scanné dans exports/ et retourne le chemin relatif."""
+    creer_dossier_exports()
+    horodatage = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nom_fichier = f"{numero}_{horodatage}.pdf"
+    chemin_absolu = os.path.join(DOSSIER_EXPORTS, nom_fichier)
+    shutil.copy2(chemin_source, chemin_absolu)
+    return f"exports/{nom_fichier}"
+
+
 def creer_courrier_sortant(data: dict[str, Any], user_id: int) -> tuple[int, str]:
-    """Crée un courrier sortant, génère le PDF et journalise."""
-    champs_obligatoires = (
-        "destinataire",
-        "objet",
-        "service_emetteur",
-        "corps_courrier",
-    )
-    for champ in champs_obligatoires:
+    """Crée un courrier sortant, génère ou importe le PDF et journalise."""
+    mode = data.get("mode_contenu", "saisie")
+
+    for champ in ("destinataire", "objet", "service_emetteur"):
         if not data.get(champ) or not str(data[champ]).strip():
             raise ValueError(f"Le champ « {champ} » est obligatoire.")
+
+    if mode == "import_pdf":
+        chemin_source = data.get("chemin_piece_jointe_source")
+        if not chemin_source or not str(chemin_source).strip():
+            raise ValueError("Veuillez sélectionner un fichier PDF")
+        if not str(chemin_source).lower().endswith(".pdf"):
+            raise ValueError("Veuillez sélectionner un fichier PDF")
+        corps = CORPS_COURRIER_IMPORT_PDF
+    else:
+        corps = (data.get("corps_courrier") or "").strip()
+        if not corps:
+            raise ValueError("Le corps du courrier est obligatoire")
 
     connexion: sqlite3.Connection | None = None
     try:
@@ -274,7 +295,7 @@ def creer_courrier_sortant(data: dict[str, Any], user_id: int) -> tuple[int, str
             "objet": data["objet"].strip(),
             "service_emetteur": data["service_emetteur"].strip(),
             "urgence": data.get("urgence", "normal"),
-            "corps_courrier": data["corps_courrier"].strip(),
+            "corps_courrier": corps,
             "observations": data.get("observations"),
             "fichier_joint": fichier_joint,
             "created_by": user_id,
@@ -290,11 +311,14 @@ def creer_courrier_sortant(data: dict[str, Any], user_id: int) -> tuple[int, str
             "Création",
         )
 
-        courrier_complet = models.obtenir_courrier_par_id(connexion, courrier_id)
-        if courrier_complet is None:
-            raise RuntimeError("Courrier introuvable après création.")
+        if mode == "import_pdf":
+            chemin_pdf = _copier_pdf_scanne_export(str(chemin_source), numero)
+        else:
+            courrier_complet = models.obtenir_courrier_par_id(connexion, courrier_id)
+            if courrier_complet is None:
+                raise RuntimeError("Courrier introuvable après création.")
+            chemin_pdf = generer_courrier_sortant(dict(courrier_complet))
 
-        chemin_pdf = generer_courrier_sortant(dict(courrier_complet))
         models.mettre_a_jour_chemin_pdf(connexion, courrier_id, chemin_pdf)
         connexion.commit()
 
@@ -336,6 +360,11 @@ def ouvrir_pdf_sortant(courrier_id: int, user_id: int | None = None) -> None:
             regeneration = True
 
         if regeneration:
+            if courrier_dict.get("corps_courrier") == CORPS_COURRIER_IMPORT_PDF:
+                raise ValueError(
+                    "Le fichier PDF importé est introuvable. "
+                    "Restaurez-le depuis une sauvegarde."
+                )
             chemin_pdf = generer_courrier_sortant(courrier_dict)
             models.mettre_a_jour_chemin_pdf(connexion, courrier_id, chemin_pdf)
             connexion.commit()

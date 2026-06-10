@@ -1,5 +1,8 @@
 """Constantes métier partagées (statuts, urgences, libellés, couleurs)."""
 
+VERSION = "1.1.0"
+VERSION_AFFICHAGE = "v1.1"
+
 # Note cahier des charges : le statut « Traité » correspond à « Validé » (valide).
 # Ancienne valeur DB « traite » migrée vers « valide » au démarrage.
 STATUTS: tuple[str, ...] = (

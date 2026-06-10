@@ -31,5 +31,5 @@ En cas de probleme :
 
 Statut "Traite" (cahier des charges) = "Valide" (valide) en base.
 
-Version : IBI COURRIERS v1.0
+Version : IBI COURRIERS v1.1 (1.1.0)
 ================================================================

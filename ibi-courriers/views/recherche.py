@@ -37,9 +37,12 @@ from views.ui_helpers import (
     alterner_couleur_ligne,
     configurer_grille_tableau,
     configurer_survol_ligne,
+    creer_date_filtre,
     creer_entete_tableau,
     creer_etat_vide,
     lier_infobulle,
+    lire_date_entry,
+    reinitialiser_date_entry,
     tronquer_texte,
 )
 
@@ -118,18 +121,8 @@ class RechercheView(ctk.CTkFrame):
             font=POLICE_TEXTE,
         )
         self.menu_urgence.set("Tous")
-        self.champ_date_debut = ctk.CTkEntry(
-            section_filtres,
-            placeholder_text="JJ/MM/AAAA",
-            font=POLICE_TEXTE,
-            width=120,
-        )
-        self.champ_date_fin = ctk.CTkEntry(
-            section_filtres,
-            placeholder_text="JJ/MM/AAAA",
-            font=POLICE_TEXTE,
-            width=120,
-        )
+        cadre_debut, self.champ_date_debut = creer_date_filtre(section_filtres)
+        cadre_fin, self.champ_date_fin = creer_date_filtre(section_filtres)
 
         champs_l1 = (
             ("Mot-cl\u00e9", self.champ_mot_cle),
@@ -149,8 +142,8 @@ class RechercheView(ctk.CTkFrame):
         champs_l2 = (
             ("Service", self.menu_service),
             ("Urgence", self.menu_urgence),
-            ("Date du", self.champ_date_debut),
-            ("Date au", self.champ_date_fin),
+            ("Date du", cadre_debut),
+            ("Date au", cadre_fin),
         )
         for col, (libelle, widget) in enumerate(champs_l2):
             ctk.CTkLabel(
@@ -229,8 +222,8 @@ class RechercheView(ctk.CTkFrame):
             "statut": FILTRES_STATUT_RECHERCHE.get(self.menu_statut.get()),
             "service": None if service == "Tous" else service,
             "urgence": FILTRES_URGENCE_RECHERCHE.get(self.menu_urgence.get()),
-            "date_debut": self.champ_date_debut.get().strip() or None,
-            "date_fin": self.champ_date_fin.get().strip() or None,
+            "date_debut": lire_date_entry(self.champ_date_debut) or None,
+            "date_fin": lire_date_entry(self.champ_date_fin) or None,
         }
 
     def _executer_recherche(self) -> None:
@@ -260,8 +253,8 @@ class RechercheView(ctk.CTkFrame):
         self.menu_statut.set("Tous")
         self.menu_service.set("Tous")
         self.menu_urgence.set("Tous")
-        self.champ_date_debut.delete(0, "end")
-        self.champ_date_fin.delete(0, "end")
+        reinitialiser_date_entry(self.champ_date_debut, vider=True)
+        reinitialiser_date_entry(self.champ_date_fin, vider=True)
         self.label_erreur.configure(text="")
         self.resultats = []
         self.filtres_appliques = {}

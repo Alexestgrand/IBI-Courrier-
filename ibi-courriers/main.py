@@ -15,6 +15,37 @@ LARGEUR_FENETRE = 1280
 HAUTEUR_FENETRE = 720
 TITRE_APPLICATION = "IBI COURRIERS"
 
+is_fullscreen: bool = False
+geometry_memorisee: str | None = None
+
+
+def est_plein_ecran() -> bool:
+    """Indique si la fenetre principale est en plein ecran."""
+    return is_fullscreen
+
+
+def basculer_plein_ecran(fenetre: ctk.CTk) -> None:
+    """Bascule entre mode plein ecran et fenetre."""
+    global is_fullscreen, geometry_memorisee
+    if not is_fullscreen:
+        geometry_memorisee = fenetre.geometry()
+        fenetre.resizable(True, True)
+        fenetre.attributes("-fullscreen", True)
+        is_fullscreen = True
+    else:
+        fenetre.attributes("-fullscreen", False)
+        if geometry_memorisee:
+            fenetre.geometry(geometry_memorisee)
+        else:
+            _centrer_fenetre(fenetre)
+        is_fullscreen = False
+
+
+def _quitter_plein_ecran(fenetre: ctk.CTk) -> None:
+    """Quitte le plein ecran sans fermer l'application."""
+    if is_fullscreen:
+        basculer_plein_ecran(fenetre)
+
 
 def _centrer_fenetre(fenetre: ctk.CTk) -> None:
     fenetre.update_idletasks()
@@ -38,9 +69,12 @@ def main() -> None:
     app = ctk.CTk()
     app.title(TITRE_APPLICATION)
     app.geometry(f"{LARGEUR_FENETRE}x{HAUTEUR_FENETRE}")
-    app.resizable(False, False)
+    app.resizable(True, True)
     app.configure(fg_color=COULEUR_PRINCIPALE)
     _centrer_fenetre(app)
+
+    app.bind("<F11>", lambda _e: basculer_plein_ecran(app))
+    app.bind("<Escape>", lambda _e: _quitter_plein_ecran(app))
 
     LoginView(
         app,

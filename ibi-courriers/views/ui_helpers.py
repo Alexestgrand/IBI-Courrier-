@@ -2,8 +2,11 @@
 """Composants et helpers UI reutilisables."""
 
 from collections.abc import Callable
+from datetime import date, datetime
+import tkinter as tk
 
 import customtkinter as ctk
+from tkcalendar import DateEntry
 
 from utils.theme import (
     ACCENT,
@@ -14,7 +17,9 @@ from utils.theme import (
     FOND_CONTENU,
     FOND_LIGNE,
     FOND_LIGNE_ALT,
+    FOND_PRINCIPAL,
     FOND_SURVOL,
+    HAUTEUR_CHAMP,
     HAUTEUR_ENTETE_TABLE,
     POLICE_ENTETE,
     POLICE_PETIT,
@@ -69,14 +74,23 @@ def configurer_modale(
     hauteur: int,
     *,
     couleur: str = FOND_CONTENU,
+    utiliser_grab: bool = True,
 ) -> None:
-    """Configure une modale : centrage, grab, Escape pour fermer."""
+    """Configure une modale : centrage, grab optionnel, Escape pour fermer."""
     fenetre.resizable(False, False)
     fenetre.configure(fg_color=couleur)
     fenetre.transient(parent.winfo_toplevel())
-    fenetre.grab_set()
+    if utiliser_grab:
+        fenetre.grab_set()
+    else:
+        _elever_modale_si_plein_ecran(fenetre)
     centrer_fenetre_modale(fenetre, largeur, hauteur)
-    fenetre.bind("<Escape>", lambda _e: fenetre.destroy())
+
+    def _fermer_sur_escape(_event: object) -> str:
+        fenetre.destroy()
+        return "break"
+
+    fenetre.bind("<Escape>", _fermer_sur_escape)
 
 
 def creer_barre_titre(
@@ -358,3 +372,167 @@ def afficher_modale_confirmation(
         fg_color=SECONDAIRE,
         command=fenetre.destroy,
     ).pack(side="right")
+
+
+def _est_plein_ecran() -> bool:
+    from main import est_plein_ecran
+
+    return est_plein_ecran()
+
+
+def _elever_modale_si_plein_ecran(fenetre: ctk.CTkToplevel) -> None:
+    """Maintient la modale au-dessus de la fenetre plein ecran (Windows)."""
+    if not _est_plein_ecran():
+        return
+    try:
+        fenetre.attributes("-topmost", True)
+    except tk.TclError:
+        return
+
+    def _reinitialiser_topmost(_event: object | None = None) -> None:
+        try:
+            if fenetre.winfo_exists():
+                fenetre.attributes("-topmost", False)
+        except tk.TclError:
+            pass
+
+    fenetre.bind("<Destroy>", _reinitialiser_topmost, add="+")
+
+
+def _lier_date_entry_plein_ecran(entry: DateEntry) -> None:
+    """Force le popup calendrier au-dessus en plein ecran (z-order Windows)."""
+    popup_configure: set[int] = set()
+
+    def _relever_calendrier() -> None:
+        if not _est_plein_ecran():
+            return
+        top_cal = getattr(entry, "_top_cal", None)
+        if top_cal is None or not top_cal.winfo_exists():
+            return
+        try:
+            top_cal.attributes("-topmost", True)
+            top_cal.lift()
+        except tk.TclError:
+            return
+        wid = top_cal.winfo_id()
+        if wid in popup_configure:
+            return
+        popup_configure.add(wid)
+
+        def _baisser_calendrier(_event: object | None = None) -> None:
+            try:
+                if top_cal.winfo_exists():
+                    top_cal.attributes("-topmost", False)
+            except tk.TclError:
+                pass
+
+        top_cal.bind("<Unmap>", _baisser_calendrier, add="+")
+
+    def _planifier_relevement(_event: object | None = None) -> None:
+        entry.after(10, _relever_calendrier)
+        entry.after(80, _relever_calendrier)
+
+    entry.bind("<ButtonPress-1>", _planifier_relevement, add="+")
+
+
+def _kwargs_date_entry() -> dict:
+    """Parametres visuels communs pour DateEntry (theme IBI)."""
+    return {
+        "date_pattern": "dd/MM/y",
+        "background": FOND_CONTENU,
+        "foreground": TEXTE_PRIMAIRE,
+        "normalbackground": FOND_CONTENU,
+        "selectbackground": ACCENT,
+        "headersbackground": FOND_PRINCIPAL,
+        "borderwidth": 0,
+        "relief": "flat",
+        "font": POLICE_TEXTE,
+        "width": 14,
+    }
+
+
+def _instancier_date_entry(parent: ctk.CTkFrame) -> DateEntry:
+    """Cree un DateEntry tk dans un cadre CTk (locale fr)."""
+    kwargs = _kwargs_date_entry()
+    for locale in ("fr_FR", "fr"):
+        try:
+            return DateEntry(parent, locale=locale, **kwargs)
+        except (ValueError, OSError):
+            continue
+    return DateEntry(parent, **kwargs)
+
+
+def creer_date_entry(
+    parent: ctk.CTkBaseClass,
+    *,
+    date_defaut: date | None = None,
+    vide: bool = False,
+) -> DateEntry:
+    """Calendrier DateEntry dans un CTkFrame ; retourne le widget DateEntry."""
+    cadre = ctk.CTkFrame(parent, fg_color="transparent", height=HAUTEUR_CHAMP)
+    cadre.pack_propagate(True)
+    entry = _instancier_date_entry(cadre)
+    entry.pack(fill="x", expand=True, ipady=4)
+    if vide:
+        entry.delete(0, "end")
+    elif date_defaut is not None:
+        entry.set_date(date_defaut)
+    else:
+        entry.set_date(datetime.now().date())
+    entry._ibi_cadre = cadre  # type: ignore[attr-defined]
+    _lier_date_entry_plein_ecran(entry)
+    return entry
+
+
+def cadre_date_entry(widget: DateEntry) -> ctk.CTkFrame:
+    """Retourne le CTkFrame parent a packer dans les formulaires."""
+    return widget._ibi_cadre  # type: ignore[attr-defined]
+
+
+def lire_date_entry(widget: DateEntry) -> str:
+    """Lit la date saisie ; retourne DD/MM/YYYY ou chaine vide si non renseignee."""
+    texte = widget.get().strip()
+    if not texte:
+        return ""
+    try:
+        return widget.get_date().strftime("%d/%m/%Y")
+    except (ValueError, AttributeError):
+        return texte
+
+
+def reinitialiser_date_entry(
+    widget: DateEntry,
+    date_val: date | None = None,
+    *,
+    vider: bool = False,
+) -> None:
+    """Reinitialise un DateEntry (vide, date donnee ou date du jour)."""
+    if vider:
+        widget.delete(0, "end")
+    elif date_val is not None:
+        widget.set_date(date_val)
+    else:
+        widget.set_date(datetime.now().date())
+
+
+def creer_date_filtre(parent: ctk.CTkBaseClass) -> tuple[ctk.CTkFrame, DateEntry]:
+    """DateEntry pour filtres recherche (vide par defaut) + bouton Effacer."""
+    ligne = ctk.CTkFrame(parent, fg_color="transparent")
+    entry = _instancier_date_entry(ligne)
+    entry.pack(side="left", fill="x", expand=True, ipady=4)
+    entry.delete(0, "end")
+    entry._ibi_cadre = ligne  # type: ignore[attr-defined]
+
+    ctk.CTkButton(
+        ligne,
+        text="\u2715",
+        width=32,
+        height=HAUTEUR_CHAMP,
+        font=POLICE_PETIT,
+        fg_color=SECONDAIRE,
+        hover_color=ACCENT_HOVER,
+        command=lambda: reinitialiser_date_entry(entry, vider=True),
+    ).pack(side="right", padx=(4, 0))
+
+    _lier_date_entry_plein_ecran(entry)
+    return ligne, entry

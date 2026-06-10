@@ -6,8 +6,6 @@ import os
 
 import tkinter.filedialog as filedialog
 
-from datetime import datetime
-
 from typing import Any
 
 
@@ -75,27 +73,19 @@ from utils.theme import (
 from views.fiche_courrier import ouvrir_fiche_sortant
 
 from views.ui_helpers import (
-
     afficher_message_statut,
-
     alterner_couleur_ligne,
-
+    cadre_date_entry,
     configurer_modale,
-
     configurer_survol_ligne,
-
     creer_barre_titre,
-
+    creer_date_entry,
     creer_entete_tableau,
-
     creer_etat_vide,
-
     lier_infobulle,
-
+    lire_date_entry,
     packer_barre_actions,
-
     tronquer_texte,
-
 )
 
 
@@ -484,7 +474,9 @@ class CourriersSortantsView(ctk.CTkFrame):
 
         fenetre.title("Nouveau courrier sortant")
 
-        configurer_modale(fenetre, self, 540, 680, couleur=self.couleur_contenu)
+        configurer_modale(
+            fenetre, self, 540, 680, couleur=self.couleur_contenu, utiliser_grab=False
+        )
 
 
 
@@ -566,11 +558,8 @@ class CourriersSortantsView(ctk.CTkFrame):
 
 
 
-        champs["date"] = ctk.CTkEntry(scroll, font=POLICE_TEXTE, height=HAUTEUR_CHAMP)
-
-        champs["date"].insert(0, datetime.now().strftime("%d/%m/%Y"))
-
-        ajouter_ligne("Date d'envoi", champs["date"])
+        champs["date"] = creer_date_entry(scroll)
+        ajouter_ligne("Date d'envoi", cadre_date_entry(champs["date"]))
 
 
 
@@ -620,175 +609,183 @@ class CourriersSortantsView(ctk.CTkFrame):
 
 
 
-        champs["corps"] = ctk.CTkTextbox(scroll, height=160, font=POLICE_TEXTE)
-
-        ajouter_ligne("Corps du courrier *", champs["corps"])
-
-
-
-        champs["observations"] = ctk.CTkEntry(
-
-            scroll, font=POLICE_TEXTE, height=HAUTEUR_CHAMP
-
-        )
-
-        ajouter_ligne("Observations", champs["observations"])
-
-
+        mode_contenu: dict[str, str] = {"valeur": "saisie"}
 
         ctk.CTkLabel(
-
             scroll,
-
-            text="Pièce jointe",
-
+            text="Contenu du courrier",
             font=POLICE_TEXTE,
-
             text_color=TEXTE_PRIMAIRE,
-
             anchor="w",
-
         ).pack(fill="x", padx=16, pady=(8, 2))
 
-
-
-        frame_pj = ctk.CTkFrame(scroll, fg_color="transparent")
-
-        frame_pj.pack(fill="x", padx=16, pady=(0, 8))
-
-        label_pj = ctk.CTkLabel(
-
-            frame_pj,
-
-            text="Aucun fichier",
-
+        selecteur_mode = ctk.CTkSegmentedButton(
+            scroll,
+            values=["Saisir le contenu", "Importer un PDF scanné"],
             font=POLICE_TEXTE,
-
-            text_color=TEXTE_SECONDAIRE,
-
-            anchor="w",
-
+            command=lambda v: _changer_mode(v),
         )
+        selecteur_mode.set("Saisir le contenu")
+        selecteur_mode.pack(fill="x", padx=16, pady=(0, 8))
 
-        label_pj.pack(side="left", fill="x", expand=True)
+        label_corps = ctk.CTkLabel(
+            scroll,
+            text="Corps du courrier *",
+            font=POLICE_TEXTE,
+            text_color=TEXTE_PRIMAIRE,
+            anchor="w",
+        )
+        champs["corps"] = ctk.CTkTextbox(scroll, height=160, font=POLICE_TEXTE)
 
-        chemin_pj: dict[str, str | None] = {"valeur": None}
+        bloc_import = ctk.CTkFrame(scroll, fg_color="transparent")
+        label_import = ctk.CTkLabel(
+            bloc_import,
+            text="Aucun fichier PDF",
+            font=POLICE_TEXTE,
+            text_color=TEXTE_SECONDAIRE,
+            anchor="w",
+        )
+        label_import.pack(side="left", fill="x", expand=True)
+        chemin_pdf_scan: dict[str, str | None] = {"valeur": None}
 
-
-
-        def parcourir() -> None:
-
+        def parcourir_pdf_scan() -> None:
             chemin = filedialog.askopenfilename(
-
                 parent=fenetre,
-
-                title="Sélectionner une pièce jointe",
-
-                filetypes=[
-
-                    ("Documents", "*.pdf *.jpg *.jpeg *.png *.docx"),
-
-                    ("Tous les fichiers", "*.*"),
-
-                ],
-
+                title="Sélectionner le PDF scanné",
+                filetypes=[("PDF", "*.pdf")],
             )
-
             if chemin:
-
-                chemin_pj["valeur"] = chemin
-
-                label_pj.configure(text=os.path.basename(chemin))
-
-
+                chemin_pdf_scan["valeur"] = chemin
+                label_import.configure(text=os.path.basename(chemin))
 
         ctk.CTkButton(
-
-            frame_pj,
-
+            bloc_import,
             text="Parcourir",
-
             width=100,
-
             font=POLICE_TEXTE,
-
             fg_color=SECONDAIRE,
-
-            command=parcourir,
-
+            command=parcourir_pdf_scan,
         ).pack(side="right")
 
+        label_corps.pack(fill="x", padx=16, pady=(8, 2))
+        champs["corps"].pack(fill="x", padx=16)
 
+        champs["observations"] = ctk.CTkEntry(
+            scroll, font=POLICE_TEXTE, height=HAUTEUR_CHAMP
+        )
+        ajouter_ligne("Observations", champs["observations"])
 
-        def enregistrer() -> None:
+        label_pj = ctk.CTkLabel(
+            scroll,
+            text="Pièce jointe",
+            font=POLICE_TEXTE,
+            text_color=TEXTE_PRIMAIRE,
+            anchor="w",
+        )
+        frame_pj = ctk.CTkFrame(scroll, fg_color="transparent")
+        label_pj_fichier = ctk.CTkLabel(
+            frame_pj,
+            text="Aucun fichier",
+            font=POLICE_TEXTE,
+            text_color=TEXTE_SECONDAIRE,
+            anchor="w",
+        )
+        label_pj_fichier.pack(side="left", fill="x", expand=True)
+        chemin_pj: dict[str, str | None] = {"valeur": None}
 
-            label_erreur.configure(text="")
-
-            corps = champs["corps"].get("1.0", "end").strip()
-
-            data = {
-
-                "date_reception": champs["date"].get().strip(),
-
-                "destinataire": champs["destinataire"].get(),
-
-                "adresse_destinataire": champs["adresse"].get().strip() or None,
-
-                "objet": champs["objet"].get(),
-
-                "service_emetteur": champs["service"].get(),
-
-                "urgence": URGENCES_UI.get(champs["urgence"].get(), "normal"),
-
-                "corps_courrier": corps,
-
-                "observations": champs["observations"].get().strip() or None,
-
-                "chemin_piece_jointe_source": chemin_pj["valeur"],
-
-            }
-
-            try:
-
-                _cid, chemin_pdf = creer_courrier_sortant(data, self.utilisateur["id"])
-
-                ouvrir_fichier_export(chemin_pdf)
-
-                fenetre.destroy()
-
-                self.charger_liste()
-
-                afficher_message_statut("Courrier sortant créé avec succès.")
-
-            except ValueError as erreur:
-
-                label_erreur.configure(text=str(erreur))
-
-            except RuntimeError:
-
-                label_erreur.configure(
-
-                    text="Erreur lors de l'enregistrement. Veuillez réessayer."
-
-                )
-
-
+        def parcourir_pj() -> None:
+            chemin = filedialog.askopenfilename(
+                parent=fenetre,
+                title="Sélectionner une pièce jointe",
+                filetypes=[
+                    ("Documents", "*.pdf *.jpg *.jpeg *.png *.docx"),
+                    ("Tous les fichiers", "*.*"),
+                ],
+            )
+            if chemin:
+                chemin_pj["valeur"] = chemin
+                label_pj_fichier.configure(text=os.path.basename(chemin))
 
         ctk.CTkButton(
-
-            boutons,
-
-            text="Enregistrer & Générer PDF",
-
+            frame_pj,
+            text="Parcourir",
+            width=100,
             font=POLICE_TEXTE,
+            fg_color=SECONDAIRE,
+            command=parcourir_pj,
+        ).pack(side="right")
 
+        label_pj.pack(fill="x", padx=16, pady=(8, 2))
+        frame_pj.pack(fill="x", padx=16, pady=(0, 8))
+
+        def _changer_mode(choix: str) -> None:
+            if choix == "Importer un PDF scanné":
+                mode_contenu["valeur"] = "import_pdf"
+                label_corps.pack_forget()
+                champs["corps"].pack_forget()
+                label_pj.pack_forget()
+                frame_pj.pack_forget()
+                bloc_import.pack(fill="x", padx=16, pady=(0, 8))
+                btn_enregistrer.configure(text="Enregistrer")
+            else:
+                mode_contenu["valeur"] = "saisie"
+                bloc_import.pack_forget()
+                label_corps.pack(fill="x", padx=16, pady=(8, 2))
+                champs["corps"].pack(fill="x", padx=16)
+                label_pj.pack(fill="x", padx=16, pady=(8, 2))
+                frame_pj.pack(fill="x", padx=16, pady=(0, 8))
+                btn_enregistrer.configure(text="Enregistrer & Générer PDF")
+
+        def enregistrer() -> None:
+            label_erreur.configure(text="")
+            mode = mode_contenu["valeur"]
+            corps = champs["corps"].get("1.0", "end").strip()
+
+            if mode == "saisie" and not corps:
+                label_erreur.configure(text="Le corps du courrier est obligatoire")
+                return
+            if mode == "import_pdf" and not chemin_pdf_scan["valeur"]:
+                label_erreur.configure(text="Veuillez sélectionner un fichier PDF")
+                return
+
+            data = {
+                "date_reception": lire_date_entry(champs["date"]),
+                "destinataire": champs["destinataire"].get(),
+                "adresse_destinataire": champs["adresse"].get().strip() or None,
+                "objet": champs["objet"].get(),
+                "service_emetteur": champs["service"].get(),
+                "urgence": URGENCES_UI.get(champs["urgence"].get(), "normal"),
+                "corps_courrier": corps if mode == "saisie" else None,
+                "observations": champs["observations"].get().strip() or None,
+                "mode_contenu": mode,
+                "chemin_piece_jointe_source": (
+                    chemin_pdf_scan["valeur"]
+                    if mode == "import_pdf"
+                    else chemin_pj["valeur"]
+                ),
+            }
+            try:
+                _cid, chemin_pdf = creer_courrier_sortant(data, self.utilisateur["id"])
+                ouvrir_fichier_export(chemin_pdf)
+                fenetre.destroy()
+                self.charger_liste()
+                afficher_message_statut("Courrier sortant créé avec succès.")
+            except ValueError as erreur:
+                label_erreur.configure(text=str(erreur))
+            except RuntimeError:
+                label_erreur.configure(
+                    text="Erreur lors de l'enregistrement. Veuillez réessayer."
+                )
+
+        btn_enregistrer = ctk.CTkButton(
+            boutons,
+            text="Enregistrer & Générer PDF",
+            font=POLICE_TEXTE,
             fg_color=ACCENT,
-
             hover_color=ACCENT_HOVER,
-
             command=enregistrer,
-
-        ).pack(side="right", padx=(8, 0))
+        )
+        btn_enregistrer.pack(side="right", padx=(8, 0))
 
 
 

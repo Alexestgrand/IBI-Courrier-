@@ -6,8 +6,6 @@ import os
 
 import tkinter.filedialog as filedialog
 
-from datetime import datetime
-
 from typing import Any
 
 
@@ -73,27 +71,19 @@ from utils.theme import (
 from views.fiche_courrier import ouvrir_fiche_entrant
 
 from views.ui_helpers import (
-
     afficher_message_statut,
-
     alterner_couleur_ligne,
-
+    cadre_date_entry,
     configurer_modale,
-
     configurer_survol_ligne,
-
     creer_barre_titre,
-
+    creer_date_entry,
     creer_entete_tableau,
-
     creer_etat_vide,
-
     lier_infobulle,
-
+    lire_date_entry,
     packer_barre_actions,
-
     tronquer_texte,
-
 )
 
 
@@ -459,7 +449,9 @@ class CourriersEntrantsView(ctk.CTkFrame):
 
         fenetre.title("Nouveau courrier entrant")
 
-        configurer_modale(fenetre, self, 520, 680, couleur=self.couleur_contenu)
+        configurer_modale(
+            fenetre, self, 520, 680, couleur=self.couleur_contenu, utiliser_grab=False
+        )
 
 
 
@@ -541,11 +533,8 @@ class CourriersEntrantsView(ctk.CTkFrame):
 
 
 
-        champs["date"] = ctk.CTkEntry(scroll, font=POLICE_TEXTE, height=HAUTEUR_CHAMP)
-
-        champs["date"].insert(0, datetime.now().strftime("%d/%m/%Y"))
-
-        ajouter_ligne("Date réception", champs["date"])
+        champs["date"] = creer_date_entry(scroll)
+        ajouter_ligne("Date réception", cadre_date_entry(champs["date"]))
 
 
 
@@ -689,7 +678,7 @@ class CourriersEntrantsView(ctk.CTkFrame):
 
                 "numero": numero_prevu,
 
-                "date_reception": champs["date"].get().strip(),
+                "date_reception": lire_date_entry(champs["date"]),
 
                 "expediteur": champs["expediteur"].get(),
 

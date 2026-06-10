@@ -28,7 +28,7 @@ Application de gestion électronique des courriers **entrants** et **sortants** 
 ## Installation (développement)
 
 ```bash
-pip install customtkinter pillow reportlab bcrypt
+pip install customtkinter pillow reportlab bcrypt tkcalendar
 python main.py
 ```
 
@@ -69,10 +69,16 @@ Au premier lancement, l'application crée automatiquement :
 > **À traiter** regroupe les statuts *En attente* et *Transmis*.  
 > **Validés ce mois** compte les courriers au statut *Validé* ou *Archivé* modifiés ce mois-ci.
 
+### Affichage plein écran
+
+- **F11** : basculer plein écran / fenêtré (également depuis l'écran de connexion).
+- **Échap** : quitter le plein écran sans fermer l'application.
+- Bouton **⛶** en haut de la barre latérale (après connexion).
+
 ### Courriers entrants
 
 - Liste filtrable par statut et recherche textuelle.
-- **Nouveau courrier** : formulaire modal (date, expéditeur, objet, service, urgence, pièce jointe…).
+- **Nouveau courrier** : formulaire modal avec **calendrier** pour la date (expéditeur, objet, service, urgence, pièce jointe…).
 - Numérotation automatique : `ENT-AAAA-NNNN`.
 - Bouton **Voir** : fiche détail, changement de statut selon le rôle, export PDF, pièce jointe.
 
@@ -80,15 +86,18 @@ Au premier lancement, l'application crée automatiquement :
 
 ### Courriers sortants
 
-- Même principe que les entrants.
+- Même principe que les entrants, avec **calendrier** pour la date d'envoi.
 - Numérotation : `SOR-AAAA-NNNN`.
-- Génération d'un **PDF** à l'enregistrement ; réimpression depuis la fiche.
+- Deux modes de création :
+  - **Saisir le contenu** : génération d'une lettre **PDF** (ReportLab) à l'enregistrement.
+  - **Importer un PDF scanné** : le fichier PDF sélectionné est copié comme document officiel (pas de lettre générée).
+- Réimpression / ouverture du PDF depuis la fiche ou la liste.
 
 **Recherche dans la liste** : N°, objet, destinataire, référence document.
 
 ### Recherche avancée
 
-Filtres combinables : mot-clé, type (entrant/sortant), statut, service, urgence, plage de dates.
+Filtres combinables : mot-clé, type (entrant/sortant), statut, service, urgence, plage de dates (calendrier **Date du** / **Date au**, bouton ✕ pour effacer).
 
 Le **mot-clé** recherche dans :
 
@@ -226,6 +235,7 @@ Migrations légères idempotentes au démarrage (`migrer_schema()`).
 | `pillow` | Affichage logo / images |
 | `reportlab` | Génération PDF |
 | `bcrypt` | Hash des mots de passe |
+| `tkcalendar` | Sélecteur de date (formulaires et recherche) |
 
 Modules standard : `sqlite3`, `threading` (scheduler backup), `shutil`, `secrets`.
 
@@ -291,4 +301,11 @@ Consultation : écran **Utilisateurs** → section **Journal d'activité** (admi
 
 ## Version
 
-**IBI COURRIERS v1.0** — Groupe IBI Côte d'Ivoire.
+**IBI COURRIERS v1.1** (1.1.0) — Groupe IBI Côte d'Ivoire.
+
+### Nouveautés v1.1
+
+- Calendrier de saisie des dates (courriers entrants/sortants, recherche)
+- Courrier sortant : saisie du contenu ou import d'un PDF scanné
+- Mode plein écran (F11, bouton sidebar, Échap pour quitter)
+- Correctifs modales et calendrier en plein écran (Windows)

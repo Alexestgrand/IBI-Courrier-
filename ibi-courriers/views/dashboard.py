@@ -16,7 +16,12 @@ from services.stats import (
     obtenir_stats_par_service,
 )
 from utils.audit import enregistrer_audit
-from utils.constants import COULEURS_STATUT, COULEURS_TYPE, LIBELLES_STATUT
+from utils.constants import (
+    COULEURS_STATUT,
+    COULEURS_TYPE,
+    LIBELLES_STATUT,
+    VERSION_AFFICHAGE,
+)
 from utils.theme import (
     ACCENT,
     ACCENT_HOVER,
@@ -152,7 +157,25 @@ class DashboardView:
         enregistrer_barre_statut(self.barre_statut)
 
     def _construire_sidebar(self) -> None:
-        self._ajouter_logo_sidebar()
+        entete = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        entete.pack(fill="x", padx=8, pady=(8, 0))
+
+        zone_logo = ctk.CTkFrame(entete, fg_color="transparent")
+        zone_logo.pack(side="left", fill="x", expand=True)
+        self._ajouter_logo_sidebar(zone_logo)
+
+        self._btn_plein_ecran = ctk.CTkButton(
+            entete,
+            text="\u26f6",
+            width=32,
+            height=32,
+            font=POLICE_TEXTE,
+            fg_color="transparent",
+            hover_color=ACCENT_HOVER,
+            text_color=TEXTE_SECONDAIRE,
+            command=self._basculer_plein_ecran,
+        )
+        self._btn_plein_ecran.pack(side="right", padx=(4, 0))
 
         ctk.CTkLabel(
             self.sidebar,
@@ -228,7 +251,7 @@ class DashboardView:
 
         ctk.CTkLabel(
             self.sidebar,
-            text="IBI COURRIERS v1.0",
+            text=f"IBI COURRIERS {VERSION_AFFICHAGE}",
             font=POLICE_PETIT,
             text_color=TEXTE_SECONDAIRE,
         ).pack(side="bottom", pady=(0, 4))
@@ -245,14 +268,25 @@ class DashboardView:
             command=self._deconnecter,
         ).pack(fill="x", padx=12, pady=(0, 16), side="bottom")
 
-    def _ajouter_logo_sidebar(self) -> None:
+    def _basculer_plein_ecran(self) -> None:
+        from main import basculer_plein_ecran, est_plein_ecran
+
+        basculer_plein_ecran(self.fenetre)
+        self._btn_plein_ecran.configure(
+            text="\u229f" if est_plein_ecran() else "\u26f6"
+        )
+
+    def _ajouter_logo_sidebar(self, parent: ctk.CTkFrame | None = None) -> None:
+        conteneur = parent if parent is not None else self.sidebar
         chemin_logo = self.chemin_ressource("assets/logo.png")
         if not os.path.isfile(chemin_logo):
             return
         try:
             image = Image.open(chemin_logo)
             logo = ctk.CTkImage(light_image=image, dark_image=image, size=(48, 48))
-            ctk.CTkLabel(self.sidebar, image=logo, text="").pack(pady=(16, 4))
+            ctk.CTkLabel(conteneur, image=logo, text="").pack(
+                side="left", padx=(8, 0), pady=(8, 4)
+            )
         except OSError:
             pass
 
