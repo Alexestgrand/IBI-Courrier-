@@ -1,0 +1,17 @@
+# Dépendances Python
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Données
+uploads/
+
+# IDE
+.idea/
+.vscode/
