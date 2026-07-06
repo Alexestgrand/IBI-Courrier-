@@ -45,7 +45,7 @@ jobs:
           chmod +x scripts/deploy.sh scripts/backup.sh 2>/dev/null || true
           docker compose -f docker-compose.prod.yml up -d --build
           docker compose -f docker-compose.prod.yml ps
-          curl -sf http://127.0.0.1:8080/api/health
-          echo ""
+          chmod +x scripts/wait-health.sh
+          ./scripts/wait-health.sh
           echo "Déploiement GitHub Actions OK"
           ENDSSH

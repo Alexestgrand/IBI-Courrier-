@@ -19,6 +19,6 @@ echo "==> État des conteneurs"
 docker compose -f docker-compose.prod.yml ps
 
 echo "==> Santé API"
-curl -sf http://127.0.0.1:8080/api/health
-echo ""
+chmod +x scripts/wait-health.sh
+./scripts/wait-health.sh
 echo "Déploiement terminé."
