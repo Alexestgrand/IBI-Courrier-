@@ -2,6 +2,18 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const fetchOptions = { credentials: "include" };
 
+function doitRedirigerSur401(path) {
+  if (path === "/auth/login" || path.startsWith("/auth/login?")) return false;
+  if (window.location.pathname === "/login") return false;
+  return true;
+}
+
+function redirigerSessionExpiree() {
+  if (window.location.pathname === "/login") return;
+  const params = new URLSearchParams({ expired: "1" });
+  window.location.replace(`/login?${params.toString()}`);
+}
+
 async function request(path, options = {}) {
   const { signal, ...rest } = options;
   const headers = { ...(rest.headers || {}) };
@@ -18,8 +30,9 @@ async function request(path, options = {}) {
   });
 
   if (response.status === 401) {
-    const params = new URLSearchParams({ expired: "1" });
-    window.location.href = `/login?${params.toString()}`;
+    if (doitRedirigerSur401(path)) {
+      redirigerSessionExpiree();
+    }
     throw new Error("Session expirée");
   }
 
@@ -201,7 +214,7 @@ function downloadBlob(path, filename) {
   return fetch(`${API_BASE}${path}`, fetchOptions)
     .then((r) => {
       if (r.status === 401) {
-        window.location.href = "/login?expired=1";
+        redirigerSessionExpiree();
         throw new Error("Session expirée");
       }
       if (!r.ok) throw new Error("Téléchargement impossible");
