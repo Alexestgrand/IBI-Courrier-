@@ -81,11 +81,11 @@ export default function Dashboard() {
   if (!stats) return null;
 
   const statItems = [
-    { value: stats.total_courriers, label: "Total courriers", tone: "gold" },
-    { value: stats.en_attente, label: "En attente", tone: "coral" },
-    { value: stats.transmis, label: "Transmis", tone: "teal" },
-    { value: stats.valides, label: "Validés", tone: "emerald" },
-    { value: stats.urgents, label: "Urgents actifs", tone: "violet" },
+    { value: stats.total_courriers, label: "Total courriers", tone: "gold", to: "/courriers/entrants" },
+    { value: stats.en_attente, label: "En attente", tone: "coral", to: "/courriers/entrants?statut=en_attente" },
+    { value: stats.transmis, label: "Transmis", tone: "teal", to: "/courriers/entrants?statut=transmis" },
+    { value: stats.valides, label: "Validés", tone: "emerald", to: "/courriers/entrants?statut=valide" },
+    { value: stats.urgents, label: "Urgents actifs", tone: "violet", to: "/courriers/entrants?urgents=1" },
   ];
 
   const journal = stats.journal_du_jour || { date: "", recus: [], traites: [] };
@@ -103,10 +103,10 @@ export default function Dashboard() {
 
       <div className="stats-grid stats-grid--5">
         {statItems.map((item) => (
-          <div key={item.label} className={`stat-card stat-card--${item.tone}`}>
-            <div className="stat-card__value">{item.value}</div>
+          <Link key={item.label} to={item.to} className={`stat-card stat-card--${item.tone}`}>
+            <div className="stat-card__value">{item.value ?? "—"}</div>
             <div className="stat-card__label">{item.label}</div>
-          </div>
+          </Link>
         ))}
       </div>
 

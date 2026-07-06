@@ -13,6 +13,29 @@ const CONFIRMATION_STATUT = {
   archive: "Archiver ce courrier ?",
 };
 
+const ICONS = {
+  eye: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  print: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
+  ),
+  download: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  ),
+};
+
 export default function CourrierDetail() {
   const { id } = useParams();
   const { toast } = useToast();
@@ -25,6 +48,7 @@ export default function CourrierDetail() {
   const [form, setForm] = useState({});
   const [chargeLoading, setChargeLoading] = useState(true);
   const [chargeErreur, setChargeErreur] = useState("");
+  const [confirmationStatut, setConfirmationStatut] = useState(null);
 
   usePageTitle(courrier ? `Courrier ${courrier.numero}` : "Courrier");
 
@@ -60,10 +84,16 @@ export default function CourrierDetail() {
     charger();
   }, [id]);
 
-  const changerStatut = async (nouveau_statut) => {
-    const message = CONFIRMATION_STATUT[nouveau_statut];
-    if (message && !confirm(message)) return;
+  const demanderChangementStatut = (s) => {
+    if (CONFIRMATION_STATUT[s]) {
+      setConfirmationStatut(s);
+    } else {
+      changerStatut(s);
+    }
+  };
 
+  const changerStatut = async (nouveau_statut) => {
+    setConfirmationStatut(null);
     setErreur("");
     setLoading(true);
     try {
@@ -296,37 +326,33 @@ export default function CourrierDetail() {
             {courrier.pieces_jointes.map((pj) => (
               <li key={pj.id}>
                 <span>
-                  {pj.nom_original} ({formatTaille(pj.taille_octets)})
+                  {pj.nom_original}{" "}
+                  <span className="text-muted">({formatTaille(pj.taille_octets)})</span>
                 </span>
-                <div className="actions-row" style={{ marginTop: 0, gap: "0.35rem" }}>
+                <div className="file-actions">
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn-icon"
                     type="button"
-                    onClick={() =>
-                      previewPiece(pj.id).catch((e) => toast(e.message, "error"))
-                    }
+                    title="Aperçu"
+                    onClick={() => previewPiece(pj.id).catch((e) => toast(e.message, "error"))}
                   >
-                    Voir
+                    {ICONS.eye}
                   </button>
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn-icon"
                     type="button"
-                    onClick={() =>
-                      printPiece(pj.id).catch((e) => toast(e.message, "error"))
-                    }
+                    title="Imprimer"
+                    onClick={() => printPiece(pj.id).catch((e) => toast(e.message, "error"))}
                   >
-                    Imprimer
+                    {ICONS.print}
                   </button>
                   <button
-                    className="btn btn-secondary btn-sm"
+                    className="btn-icon"
                     type="button"
-                    onClick={() =>
-                      downloadPiece(pj.id, pj.nom_original).catch((e) =>
-                        toast(e.message, "error")
-                      )
-                    }
+                    title="Télécharger"
+                    onClick={() => downloadPiece(pj.id, pj.nom_original).catch((e) => toast(e.message, "error"))}
                   >
-                    Télécharger
+                    {ICONS.download}
                   </button>
                 </div>
               </li>
@@ -344,20 +370,43 @@ export default function CourrierDetail() {
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
               rows={2}
+              placeholder="Ajouter une note ou un motif…"
             />
           </div>
           {erreur && <p className="error-msg">{erreur}</p>}
-          <div className="actions-row">
+          {confirmationStatut && (
+            <div className="inline-confirm">
+              <p>{CONFIRMATION_STATUT[confirmationStatut]}</p>
+              <div className="inline-confirm__actions">
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => changerStatut(confirmationStatut)}
+                  disabled={loading}
+                >
+                  Confirmer
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setConfirmationStatut(null)}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="statut-actions">
             {courrier.statuts_possibles.map((s) => (
               <button
                 key={s}
                 type="button"
                 className={`btn ${s === "rejete" ? "btn-danger" : "btn-primary"}`}
-                disabled={loading}
+                disabled={loading || confirmationStatut === s}
                 aria-label={`Passer au statut ${LIBELLES_STATUT[s] || s}`}
-                onClick={() => changerStatut(s)}
+                onClick={() => demanderChangementStatut(s)}
               >
-                → {LIBELLES_STATUT[s] || s}
+                {LIBELLES_STATUT[s] || s}
               </button>
             ))}
           </div>
@@ -369,20 +418,23 @@ export default function CourrierDetail() {
         {historique.length === 0 ? (
           <p className="text-muted">Aucun historique.</p>
         ) : (
-          historique.map((h) => (
-            <div key={h.id} className="historique-item">
-              <strong>
-                {h.ancien_statut
-                  ? `${LIBELLES_STATUT[h.ancien_statut] || h.ancien_statut} → `
-                  : ""}
-                {LIBELLES_STATUT[h.nouveau_statut] || h.nouveau_statut}
-              </strong>
-              {h.observation && <div className="text-secondary">{h.observation}</div>}
-              <div className="text-muted" style={{ fontSize: "0.8rem" }}>
-                {h.utilisateur_nom || "—"} — {formatDate(h.date)}
+          <div className="historique-timeline">
+            {historique.map((h) => (
+              <div key={h.id} className="historique-item">
+                <div className="historique-item__statut">
+                  {h.ancien_statut
+                    ? `${LIBELLES_STATUT[h.ancien_statut] || h.ancien_statut} → ${LIBELLES_STATUT[h.nouveau_statut] || h.nouveau_statut}`
+                    : LIBELLES_STATUT[h.nouveau_statut] || h.nouveau_statut}
+                </div>
+                {h.observation && (
+                  <div className="historique-item__obs">{h.observation}</div>
+                )}
+                <div className="historique-item__meta">
+                  {h.utilisateur_nom || "—"} · {formatDate(h.date)}
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>

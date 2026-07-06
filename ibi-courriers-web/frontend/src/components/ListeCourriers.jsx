@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import AlerteErreur from "./AlerteErreur";
 import Pagination from "./Pagination";
@@ -62,6 +62,7 @@ function cellule(c, col) {
 export default function ListeCourriers({ type }) {
   const cfg = CONFIG[type];
   usePageTitle(cfg.title);
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const aUnService = Boolean(servicePourRole(user?.role));
@@ -250,7 +251,14 @@ export default function ListeCourriers({ type }) {
             </thead>
             <tbody>
               {courriers.map((c) => (
-                <tr key={c.id}>
+                <tr
+                  key={c.id}
+                  className="table-row--clickable"
+                  onClick={(e) => {
+                    if (e.target.closest("a") || e.target.closest("button")) return;
+                    navigate(`/courriers/${c.id}`);
+                  }}
+                >
                   {cfg.columns.map((col) => (
                     <td key={col.key}>{cellule(c, col)}</td>
                   ))}
