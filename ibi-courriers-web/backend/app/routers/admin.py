@@ -17,6 +17,7 @@ from app.schemas import (
     SmtpStatusResponse,
     TestEmailRequest,
 )
+from app.health import verifier_sante
 from app.services import enregistrer_audit
 from app.services_backup import (
     chemin_sauvegarde,
@@ -31,6 +32,15 @@ from app.services_migration import (
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/health")
+def get_health_detail(
+    db: Session = Depends(get_db),
+    _: User = Depends(exiger_admin),
+) -> dict:
+    """Diagnostic complet (admin uniquement)."""
+    return verifier_sante(db)
 
 
 @router.get("/smtp", response_model=SmtpStatusResponse)

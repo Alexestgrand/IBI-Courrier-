@@ -11,6 +11,7 @@ dist/
 
 # Données
 uploads/
+logs/
 
 # IDE
 .idea/

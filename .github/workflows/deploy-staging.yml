@@ -9,11 +9,54 @@ on:
 
   workflow_dispatch:
 
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
 jobs:
+  test-backend:
+    name: Tests API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: pip install -r ibi-courriers-web/backend/requirements.txt
+
+      - name: Lancer pytest
+        working-directory: ibi-courriers-web/backend
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          SECRET_KEY: test-secret-key
+          ENVIRONMENT: development
+          UPLOAD_DIR: /tmp/ibi-ci-uploads
+          BACKUP_DIR: /tmp/ibi-ci-backups
+          MIGRATION_DIR: /tmp/ibi-ci-migration
+        run: PYTHONPATH=. pytest tests/ -q
+
+  build-frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Build
+        working-directory: ibi-courriers-web/frontend
+        run: npm ci && npm run build
+
   deploy-staging:
     name: Déployer staging VPS
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: [test-backend, build-frontend]
 
     steps:
       - name: Vérifier les secrets
@@ -41,8 +84,9 @@ jobs:
           git fetch origin staging
           git reset --hard origin/staging
           cd ibi-courriers-web
+          chmod +x scripts/wait-health.sh 2>/dev/null || true
           docker compose -f docker-compose.staging.yml up -d --build
-          sleep 5
-          curl -sf http://127.0.0.1:8081/api/health || true
+          docker compose -f docker-compose.staging.yml ps
+          ./scripts/wait-health.sh http://127.0.0.1:8081/api/health
           echo "Staging déployé sur port 8081"
           ENDSSH

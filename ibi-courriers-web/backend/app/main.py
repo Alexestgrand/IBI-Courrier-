@@ -5,11 +5,12 @@ import os
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
-from app.health import verifier_sante
+from app.health import verifier_sante_publique
 from app.migrations import appliquer_migrations_schema
 from app.routers import admin, auth, courriers, notifications, ocr, rapports, search, users
 from app.seed import initialiser_donnees
@@ -76,5 +77,6 @@ def on_startup() -> None:
 
 
 @app.get("/api/health")
-def health(db: Session = Depends(get_db)) -> dict:
-    return verifier_sante(db)
+def health(db: Session = Depends(get_db)) -> JSONResponse:
+    payload, code = verifier_sante_publique(db)
+    return JSONResponse(content=payload, status_code=code)

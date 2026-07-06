@@ -3,11 +3,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BACKUP_SCRIPT="$SCRIPT_DIR/backup.sh"
-CRON_LINE="0 3 * * * $BACKUP_SCRIPT >> $HOME/backups/ibi-courriers/backup.log 2>&1"
+LOG_DIR="$PROJECT_DIR/logs"
+LOG_FILE="$LOG_DIR/backup.log"
+CRON_LINE="0 3 * * * $BACKUP_SCRIPT >> $LOG_FILE 2>&1"
 
 chmod +x "$BACKUP_SCRIPT"
-mkdir -p "$HOME/backups/ibi-courriers"
+mkdir -p "$LOG_DIR"
 
 if crontab -l 2>/dev/null | grep -Fq "$BACKUP_SCRIPT"; then
   echo "La sauvegarde cron est déjà configurée."
@@ -18,4 +21,8 @@ else
 fi
 
 echo ""
+echo "Les sauvegardes sont stockées dans le volume Docker « backups » (/data/backups),"
+echo "visible aussi depuis l'interface admin → Sauvegardes."
+echo ""
 echo "Test manuel : $BACKUP_SCRIPT"
+echo "Logs cron   : $LOG_FILE"

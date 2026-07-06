@@ -9,12 +9,14 @@ on:
 
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
 jobs:
-  deploy:
-    name: Déployer sur VPS
+  test-backend:
+    name: Tests API
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: []
     steps:
       - uses: actions/checkout@v4
 
@@ -22,17 +24,40 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Tests backend
-        run: |
-          pip install -r ibi-courriers-web/backend/requirements.txt
-          cd ibi-courriers-web/backend && PYTHONPATH=. pytest tests/ -q
+      - name: Installer les dépendances
+        run: pip install -r ibi-courriers-web/backend/requirements.txt
+
+      - name: Lancer pytest
+        working-directory: ibi-courriers-web/backend
         env:
           DATABASE_URL: "sqlite:///:memory:"
-          SECRET_KEY: ci-test-key
+          SECRET_KEY: test-secret-key
+          ENVIRONMENT: development
           UPLOAD_DIR: /tmp/ibi-ci-uploads
           BACKUP_DIR: /tmp/ibi-ci-backups
           MIGRATION_DIR: /tmp/ibi-ci-migration
+        run: PYTHONPATH=. pytest tests/ -q
 
+  build-frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Build
+        working-directory: ibi-courriers-web/frontend
+        run: npm ci && npm run build
+
+  deploy:
+    name: Déployer sur VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [test-backend, build-frontend]
+    steps:
       - name: Vérifier les secrets
         run: |
           if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "Secret VPS_HOST manquant"; exit 1; fi
@@ -59,10 +84,9 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           cd ibi-courriers-web
-          chmod +x scripts/deploy.sh scripts/backup.sh 2>/dev/null || true
+          chmod +x scripts/deploy.sh scripts/backup.sh scripts/wait-health.sh 2>/dev/null || true
           docker compose -f docker-compose.prod.yml up -d --build
           docker compose -f docker-compose.prod.yml ps
-          chmod +x scripts/wait-health.sh
           ./scripts/wait-health.sh
           echo "Déploiement GitHub Actions OK"
           ENDSSH

@@ -10,7 +10,8 @@ from app.config import settings
 
 
 def verifier_sante(db: Session) -> dict:
-    checks: dict[str, str | bool | int] = {
+    """Diagnostic complet (réservé admin)."""
+    checks: dict[str, str | bool | int | float] = {
         "status": "ok",
         "environment": settings.environment,
     }
@@ -37,3 +38,20 @@ def verifier_sante(db: Session) -> dict:
         checks["status"] = "degraded"
 
     return checks
+
+
+def verifier_sante_publique(db: Session) -> tuple[dict, int]:
+    """Réponse minimale pour monitoring public (HTTP 503 si dégradé)."""
+    interne = verifier_sante(db)
+    statut = interne["status"]
+    public: dict[str, str] = {"status": statut}
+
+    if statut != "ok":
+        if interne.get("database") != "ok":
+            public["database"] = "error"
+        disque = interne.get("upload_disk")
+        if disque not in (None, "ok"):
+            public["upload_disk"] = str(disque)
+
+    code = 200 if statut == "ok" else 503
+    return public, code

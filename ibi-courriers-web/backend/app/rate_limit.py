@@ -5,13 +5,15 @@ from collections import defaultdict
 
 from fastapi import HTTPException, Request, status
 
+from app.http_utils import obtenir_ip_client
+
 _MAX_TENTATIVES = 10
 _FENETRE_SEC = 60
 _tentatives: dict[str, list[float]] = defaultdict(list)
 
 
 def verifier_rate_limit_login(request: Request) -> None:
-    ip = request.client.host if request.client else "unknown"
+    ip = obtenir_ip_client(request)
     maintenant = time.time()
     fenetre = _tentatives[ip]
     fenetre[:] = [t for t in fenetre if maintenant - t < _FENETRE_SEC]

@@ -1,14 +1,13 @@
 #!/bin/bash
-# Sauvegarde base de données + pièces jointes — IBI Courriers Web
+# Sauvegarde base de données + pièces jointes — volume Docker /data/backups (même emplacement que l'API admin)
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/ibi-courriers}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
 DATE=$(date +%F_%H%M)
-COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+BACKUP_PATH="/data/backups"
 
-mkdir -p "$BACKUP_DIR"
 cd "$DIR"
 
 if [ -f .env ]; then
@@ -18,25 +17,25 @@ if [ -f .env ]; then
   set +a
 fi
 
-echo "==> Sauvegarde PostgreSQL"
-docker compose -f "$COMPOSE_FILE" exec -T db \
-  pg_dump -U "${POSTGRES_USER:-ibi}" "${POSTGRES_DB:-ibi_courriers}" \
-  | gzip > "$BACKUP_DIR/db_${DATE}.sql.gz"
-
-echo "==> Sauvegarde fichiers uploads"
-VOLUME=$(docker volume ls -q | grep uploads | head -1)
-if [ -n "$VOLUME" ]; then
-  docker run --rm \
-    -v "${VOLUME}:/data:ro" \
-    -v "$BACKUP_DIR:/backup" \
-    alpine tar czf "/backup/uploads_${DATE}.tar.gz" -C /data .
-else
-  echo "Avertissement : volume uploads introuvable."
+if ! docker compose -f "$COMPOSE_FILE" ps --status running backend 2>/dev/null | grep -q backend; then
+  echo "ERREUR: le conteneur backend n'est pas démarré."
+  exit 1
 fi
 
-echo "==> Nettoyage des sauvegardes > ${RETENTION_DAYS} jours"
-find "$BACKUP_DIR" -type f \( -name 'db_*.sql.gz' -o -name 'uploads_*.tar.gz' \) \
-  -mtime +"$RETENTION_DAYS" -delete 2>/dev/null || true
+echo "==> Sauvegarde PostgreSQL → ${BACKUP_PATH}"
+docker compose -f "$COMPOSE_FILE" exec -T db \
+  pg_dump -U "${POSTGRES_USER:-ibi}" --no-owner --no-acl "${POSTGRES_DB:-ibi_courriers}" \
+  | gzip \
+  | docker compose -f "$COMPOSE_FILE" exec -T backend \
+      sh -c "cat > ${BACKUP_PATH}/db_${DATE}.sql.gz"
 
-echo "==> Terminé — $BACKUP_DIR"
-ls -lh "$BACKUP_DIR" | tail -5
+echo "==> Sauvegarde fichiers uploads → ${BACKUP_PATH}"
+docker compose -f "$COMPOSE_FILE" exec -T backend \
+  sh -c "tar czf ${BACKUP_PATH}/uploads_${DATE}.tar.gz -C /data/uploads ."
+
+echo "==> Nettoyage des sauvegardes > ${RETENTION_DAYS} jours"
+docker compose -f "$COMPOSE_FILE" exec -T backend \
+  sh -c "find ${BACKUP_PATH} -type f \\( -name 'db_*.sql.gz' -o -name 'uploads_*.tar.gz' \\) -mtime +${RETENTION_DAYS} -delete 2>/dev/null || true"
+
+echo "==> Terminé — sauvegardes dans le volume backups (${BACKUP_PATH})"
+docker compose -f "$COMPOSE_FILE" exec -T backend ls -lh "${BACKUP_PATH}" | tail -5

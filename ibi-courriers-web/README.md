@@ -144,7 +144,7 @@ Dans le dépôt GitHub → **Settings → Secrets and variables → Actions** :
 
 | Secret | Valeur |
 |--------|--------|
-| `VPS_HOST` | `187.124.49.6` |
+| `VPS_HOST` | IP ou hostname du VPS (ex. `votre-serveur.example.com`) |
 | `VPS_USER` | `deploy` |
 | `VPS_SSH_KEY` | clé privée complète (voir format ci-dessous) |
 
@@ -161,7 +161,7 @@ Vérifier qu'il n'y a **pas d'espace** avant/après, et qu'une **ligne vide** ex
 Test manuel depuis votre Mac :
 
 ```bash
-ssh -i ~/.ssh/github_actions deploy@187.124.49.6 "echo SSH OK"
+ssh -i ~/.ssh/github_actions deploy@VOTRE_IP_OU_HOSTNAME "echo SSH OK"
 ```
 
 Si ça fonctionne, la même clé dans GitHub Actions fonctionnera.
@@ -177,16 +177,28 @@ En cas de conflit git sur le serveur : le script fait `git reset --hard origin/m
 
 ## Sauvegardes automatiques
 
-```bash
-chmod +x scripts/backup.sh
-./scripts/backup.sh
-```
-
-Planifier avec cron (ex. chaque nuit à 2h) :
+Les sauvegardes (cron et interface admin) sont stockées dans le **même volume Docker** `backups` (`/data/backups`).
 
 ```bash
-0 2 * * * /home/deploy/IBI-Courrier-/ibi-courriers-web/scripts/backup.sh >> /home/deploy/backups/backup.log 2>&1
+chmod +x scripts/backup.sh scripts/install-backup-cron.sh
+./scripts/backup.sh              # test manuel
+./scripts/install-backup-cron.sh # cron quotidien à 3h00
 ```
+
+Logs cron : `logs/backup.log`
+
+## Sécurité serveur (recommandé)
+
+- Pare-feu : n'exposer que SSH (22), HTTP (80) et HTTPS (443)
+  ```bash
+  sudo ufw allow OpenSSH
+  sudo ufw allow 80/tcp
+  sudo ufw allow 443/tcp
+  sudo ufw enable
+  ```
+- L'application Docker écoute uniquement sur `127.0.0.1:8080` ; Caddy termine le TLS en frontal
+- `SECRET_KEY` et `POSTGRES_PASSWORD` : valeurs uniques, jamais les défauts du dépôt
+- Rotation périodique des clés SSH de déploiement
 
 ## Migration desktop → web
 
