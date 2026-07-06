@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import AlerteErreur from "../components/AlerteErreur";
+import { usePageTitle } from "../hooks/usePageTitle";
 import Pagination from "../components/Pagination";
 import { BadgeStatut, formatDate } from "../utils";
 
@@ -10,6 +11,7 @@ const PAGE_SIZE = 25;
 const ORDRE_URGENCE = { "très urgent": 0, urgent: 1, normal: 2 };
 
 export default function AValider() {
+  usePageTitle("À valider");
   const [courriers, setCourriers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, pages: 1, total: 0 });
   const [page, setPage] = useState(1);

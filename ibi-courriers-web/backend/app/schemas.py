@@ -5,8 +5,14 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 
+class LoginResponse(BaseModel):
+    must_change_password: bool = False
+    message: str = "Connecté."
+
+
 class TokenResponse(BaseModel):
-    access_token: str
+    """Conservé pour compatibilité tests / clients legacy."""
+    access_token: str = ""
     token_type: str = "bearer"
     must_change_password: bool = False
 

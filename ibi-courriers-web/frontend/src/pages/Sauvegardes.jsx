@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { api, downloadBackup } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { formatDate, formatTaille } from "../utils";
 
 export default function Sauvegardes() {
+  usePageTitle("Administration");
   const { user } = useAuth();
   const { toast } = useToast();
   const [backups, setBackups] = useState([]);

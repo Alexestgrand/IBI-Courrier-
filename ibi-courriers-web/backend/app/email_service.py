@@ -74,6 +74,26 @@ def destinataires_pour_service(db: Session, service: str) -> list[str]:
     return list(dict.fromkeys(emails + extras))
 
 
+def notifier_echec_sauvegarde(message: str) -> None:
+    """Alerte les administrateurs configurés en cas d'échec de sauvegarde."""
+    destinataires = settings.notify_emails_list
+    if not destinataires:
+        raise ValueError(
+            "NOTIFY_EMAILS non configuré — impossible d'envoyer l'alerte sauvegarde."
+        )
+    if not settings.smtp_enabled:
+        raise ValueError("SMTP désactivé — activez SMTP_ENABLED pour les alertes.")
+
+    sujet = "[IBI Courriers] Échec de sauvegarde"
+    corps = (
+        f"La sauvegarde automatique IBI Courriers a échoué.\n\n"
+        f"Détail : {message}\n\n"
+        f"Vérifiez les logs sur le serveur (logs/backup.log) et lancez un test manuel :\n"
+        f"  ./scripts/backup.sh\n"
+    )
+    _envoyer(destinataires, sujet, corps)
+
+
 def notifier_courrier_entrant(db: Session, courrier: Courrier) -> None:
     if not courrier.service_destinataire:
         return

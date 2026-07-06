@@ -1,17 +1,30 @@
 :root {
-  --bg: #0f1729;
-  --bg-elevated: #151f35;
-  --bg-surface: #1a2744;
+  --bg: #12141a;
+  --bg-elevated: #1a1d26;
+  --bg-surface: #22262f;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
 
-  --accent: #2e6be6;
-  --accent-hover: #2558c4;
-  --accent-muted: rgba(46, 107, 230, 0.12);
+  /* Accents variés — moins monochrome que le bleu unique */
+  --accent: #d4a03a;
+  --accent-hover: #e8b84d;
+  --accent-muted: rgba(212, 160, 58, 0.14);
 
-  --text: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --teal: #2dd4bf;
+  --teal-muted: rgba(45, 212, 191, 0.12);
+
+  --coral: #f97316;
+  --coral-muted: rgba(249, 115, 22, 0.12);
+
+  --violet: #a78bfa;
+  --violet-muted: rgba(167, 139, 250, 0.12);
+
+  --emerald: #34d399;
+  --emerald-muted: rgba(52, 211, 153, 0.12);
+
+  --text: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 
   --success: #4ade80;
   --error: #f87171;
@@ -48,18 +61,57 @@ body {
   font-size: 0.9375rem;
   line-height: 1.5;
   color: var(--text);
-  background: var(--bg);
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(212, 160, 58, 0.06), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(45, 212, 191, 0.05), transparent 50%),
+    var(--bg);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
 a {
-  color: var(--accent);
+  color: var(--teal);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--accent-hover);
+  color: #5eead4;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0.75rem;
+  z-index: 1000;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius);
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 0.75rem;
+}
+
+.info-banner {
+  color: var(--warning);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: var(--radius);
+}
+
+.btn-block {
+  width: 100%;
+  margin-top: 0.5rem;
 }
 
 button,
@@ -156,6 +208,8 @@ textarea {
 .sidebar__link.active {
   background: var(--accent-muted);
   color: var(--accent);
+  border-left: 3px solid var(--accent);
+  padding-left: calc(0.75rem - 3px);
 }
 
 .sidebar__footer {
@@ -213,8 +267,9 @@ textarea {
   width: 32px;
   height: 32px;
   border-radius: var(--radius);
-  background: var(--accent-muted);
+  background: linear-gradient(135deg, var(--accent-muted), var(--teal-muted));
   color: var(--accent);
+  border: 1px solid rgba(212, 160, 58, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -294,8 +349,10 @@ textarea {
 .card-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text);
   margin-bottom: 1rem;
+  padding-left: 0.65rem;
+  border-left: 3px solid var(--accent);
 }
 
 /* ─── Stats ─── */
@@ -311,13 +368,20 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem 1.15rem;
+  border-top: 3px solid var(--stat-accent, var(--accent));
 }
+
+.stat-card--gold { --stat-accent: var(--accent); }
+.stat-card--teal { --stat-accent: var(--teal); }
+.stat-card--coral { --stat-accent: var(--coral); }
+.stat-card--emerald { --stat-accent: var(--emerald); }
+.stat-card--violet { --stat-accent: var(--violet); }
 
 .stat-card__value {
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.1;
-  color: var(--text);
+  color: var(--stat-accent, var(--text));
 }
 
 .stat-card__label {
@@ -333,8 +397,8 @@ textarea {
   min-width: 1.75rem;
   padding: 0.1rem 0.5rem;
   border-radius: var(--radius);
-  background: var(--accent-muted);
-  color: var(--accent);
+  background: var(--teal-muted);
+  color: var(--teal);
   font-weight: 600;
   font-size: 0.8rem;
 }
@@ -357,15 +421,16 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: white;
+  background: linear-gradient(135deg, var(--accent), #b8862e);
+  color: #1a1208;
   border-color: var(--accent);
+  font-weight: 600;
 }
 
 .btn-primary:hover {
-  background: var(--accent-hover);
+  background: linear-gradient(135deg, var(--accent-hover), var(--accent));
   border-color: var(--accent-hover);
-  color: white;
+  color: #1a1208;
 }
 
 .btn-primary:disabled {
@@ -375,14 +440,14 @@ textarea {
 
 .btn-secondary {
   background: transparent;
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
+  color: var(--teal);
+  border-color: rgba(45, 212, 191, 0.35);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text);
-  border-color: var(--border-strong);
+  background: var(--teal-muted);
+  color: #5eead4;
+  border-color: rgba(45, 212, 191, 0.5);
 }
 
 .btn-danger {
@@ -546,9 +611,9 @@ tbody tr:last-child td {
 }
 
 .badge-transmis {
-  background: var(--accent-muted);
-  color: #93c5fd;
-  border-color: rgba(46, 107, 230, 0.25);
+  background: var(--teal-muted);
+  color: var(--teal);
+  border-color: rgba(45, 212, 191, 0.3);
 }
 
 .badge-valide {
@@ -581,11 +646,14 @@ tbody tr:last-child td {
 
 .login-card {
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   padding: 2rem;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid rgba(212, 160, 58, 0.2);
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(45, 212, 191, 0.06) inset;
 }
 
 .login-card__logo-img {
@@ -865,7 +933,8 @@ tbody tr:last-child td {
 }
 
 .panel--alert {
-  border-color: rgba(251, 191, 36, 0.35);
+  border-color: rgba(249, 115, 22, 0.4);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.06), transparent);
 }
 
 .aide-list {

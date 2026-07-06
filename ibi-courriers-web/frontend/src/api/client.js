@@ -1,28 +1,25 @@
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem("token", token);
-  else localStorage.removeItem("token");
-}
+const fetchOptions = { credentials: "include" };
 
 async function request(path, options = {}) {
-  const headers = { ...(options.headers || {}) };
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const { signal, ...rest } = options;
+  const headers = { ...(rest.headers || {}) };
 
-  if (!(options.body instanceof FormData)) {
+  if (!(rest.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...fetchOptions,
+    ...rest,
+    headers,
+    signal,
+  });
 
   if (response.status === 401) {
-    setToken(null);
-    window.location.href = "/login";
+    const params = new URLSearchParams({ expired: "1" });
+    window.location.href = `/login?${params.toString()}`;
     throw new Error("Session expirée");
   }
 
@@ -76,6 +73,8 @@ export const api = {
       body: JSON.stringify({ email, mot_de_passe }),
     }),
 
+  logout: () => request("/auth/logout", { method: "POST" }),
+
   me: () => request("/auth/me"),
 
   changePassword: (ancien_mot_de_passe, nouveau_mot_de_passe) =>
@@ -84,21 +83,21 @@ export const api = {
       body: JSON.stringify({ ancien_mot_de_passe, nouveau_mot_de_passe }),
     }),
 
-  stats: () => request("/dashboard/stats"),
+  stats: (signal) => request("/dashboard/stats", { signal }),
 
-  entites: () => request("/entites"),
+  entites: (signal) => request("/entites", { signal }),
 
-  services: () => request("/services"),
+  services: (signal) => request("/services", { signal }),
 
-  courriersEntrants: (params = {}) =>
-    request(`/courriers/entrants${buildQuery(params)}`),
+  courriersEntrants: (params = {}, signal) =>
+    request(`/courriers/entrants${buildQuery(params)}`, { signal }),
 
-  courriersSortants: (params = {}) =>
-    request(`/courriers/sortants${buildQuery(params)}`),
+  courriersSortants: (params = {}, signal) =>
+    request(`/courriers/sortants${buildQuery(params)}`, { signal }),
 
-  courrier: (id) => request(`/courriers/${id}`),
+  courrier: (id, signal) => request(`/courriers/${id}`, { signal }),
 
-  historique: (id) => request(`/courriers/${id}/historique`),
+  historique: (id, signal) => request(`/courriers/${id}/historique`, { signal }),
 
   creerCourrierEntrant: (formData) =>
     request("/courriers/entrants", { method: "POST", body: formData }),
@@ -118,7 +117,7 @@ export const api = {
       body: JSON.stringify({ nouveau_statut, observation }),
     }),
 
-  recherche: (params = {}) => request(`/recherche${buildQuery(params)}`),
+  recherche: (params = {}, signal) => request(`/recherche${buildQuery(params)}`, { signal }),
 
   utilisateurs: (params = {}) => request(`/users${buildQuery(params)}`),
 
@@ -199,11 +198,12 @@ export const api = {
 };
 
 function downloadBlob(path, filename) {
-  const token = getToken();
-  return fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  return fetch(`${API_BASE}${path}`, fetchOptions)
     .then((r) => {
+      if (r.status === 401) {
+        window.location.href = "/login?expired=1";
+        throw new Error("Session expirée");
+      }
       if (!r.ok) throw new Error("Téléchargement impossible");
       return r.blob();
     })
@@ -238,9 +238,8 @@ export function exportRechercheCsv(filtres) {
 }
 
 export function previewPiece(pieceId) {
-  const token = getToken();
   const url = `${API_BASE}/pieces-jointes/${pieceId}/view`;
-  return fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => {
+  return fetch(url, fetchOptions).then((r) => {
     if (!r.ok) throw new Error("Prévisualisation impossible");
     return r.blob();
   }).then((blob) => {
@@ -272,10 +271,7 @@ function printBlob(blob, titre = "Document") {
 }
 
 export function printPiece(pieceId) {
-  const token = getToken();
-  return fetch(`${API_BASE}/pieces-jointes/${pieceId}/view`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  return fetch(`${API_BASE}/pieces-jointes/${pieceId}/view`, fetchOptions)
     .then((r) => {
       if (!r.ok) throw new Error("Impression impossible");
       return r.blob();
@@ -284,10 +280,7 @@ export function printPiece(pieceId) {
 }
 
 export function printPdf(courrierId, numero) {
-  const token = getToken();
-  return fetch(`${API_BASE}/courriers/${courrierId}/pdf`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  return fetch(`${API_BASE}/courriers/${courrierId}/pdf`, fetchOptions)
     .then((r) => {
       if (!r.ok) throw new Error("Impression impossible");
       return r.blob();

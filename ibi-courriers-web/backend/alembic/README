@@ -16,5 +16,6 @@ alembic history
 |----------|-------------|
 | `001_baseline` | Création des tables (SQLAlchemy metadata) |
 | `002_performance_indexes` | Index sur courriers, notifications, audit |
+| `003_token_version` | Révocation de sessions JWT (`users.token_version`) |
 
 Les bases existantes (avant Alembic) sont tamponnées à `001_baseline` puis migrées vers `head`.

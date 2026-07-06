@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import AlerteErreur from "../components/AlerteErreur";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { BadgeStatut, formatDate } from "../utils";
 
 function TableCourriers({ courriers, colonnes = "standard" }) {
@@ -43,17 +44,19 @@ function TableCourriers({ courriers, colonnes = "standard" }) {
 }
 
 export default function Dashboard() {
+  usePageTitle("Tableau de bord");
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState("");
 
-  const charger = useCallback(() => {
+  const charger = useCallback((signal) => {
     setLoading(true);
     setErreur("");
-    api
-      .stats()
+    return api
+      .stats(signal)
       .then(setStats)
       .catch((err) => {
+        if (err.name === "AbortError") return;
         setStats(null);
         setErreur(err.message || "Impossible de charger le tableau de bord.");
       })
@@ -61,7 +64,9 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    charger();
+    const controller = new AbortController();
+    charger(controller.signal);
+    return () => controller.abort();
   }, [charger]);
 
   if (loading) return <p className="loading-text">Chargement…</p>;
@@ -76,11 +81,11 @@ export default function Dashboard() {
   if (!stats) return null;
 
   const statItems = [
-    { value: stats.total_courriers, label: "Total courriers" },
-    { value: stats.en_attente, label: "En attente" },
-    { value: stats.transmis, label: "Transmis" },
-    { value: stats.valides, label: "Validés" },
-    { value: stats.urgents, label: "Urgents actifs" },
+    { value: stats.total_courriers, label: "Total courriers", tone: "gold" },
+    { value: stats.en_attente, label: "En attente", tone: "coral" },
+    { value: stats.transmis, label: "Transmis", tone: "teal" },
+    { value: stats.valides, label: "Validés", tone: "emerald" },
+    { value: stats.urgents, label: "Urgents actifs", tone: "violet" },
   ];
 
   const journal = stats.journal_du_jour || { date: "", recus: [], traites: [] };
@@ -98,7 +103,7 @@ export default function Dashboard() {
 
       <div className="stats-grid stats-grid--5">
         {statItems.map((item) => (
-          <div key={item.label} className="stat-card">
+          <div key={item.label} className={`stat-card stat-card--${item.tone}`}>
             <div className="stat-card__value">{item.value}</div>
             <div className="stat-card__label">{item.label}</div>
           </div>

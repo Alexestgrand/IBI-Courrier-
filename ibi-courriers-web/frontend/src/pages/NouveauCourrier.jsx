@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { formatTaille, URGENCES } from "../utils";
 
 export default function NouveauCourrier() {
+  usePageTitle("Nouveau courrier entrant");
   const navigate = useNavigate();
   const { toast } = useToast();
   const fileInputRef = useRef(null);

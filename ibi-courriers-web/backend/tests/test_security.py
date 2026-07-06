@@ -45,7 +45,7 @@ def client_mdp_force():
 
 def test_api_bloquee_si_changement_mdp_requis(client_mdp_force):
     client, user = client_mdp_force
-    headers = {"Authorization": f"Bearer {creer_token_acces(user.id, user.role)}"}
+    headers = {"Authorization": f"Bearer {creer_token_acces(user.id, user.role, user.token_version or 0)}"}
 
     response = client.get("/api/dashboard/stats", headers=headers)
     assert response.status_code == 403
@@ -63,8 +63,13 @@ def test_api_bloquee_si_changement_mdp_requis(client_mdp_force):
     )
     assert change.status_code == 200
 
-    stats = client.get("/api/dashboard/stats", headers=headers)
-    assert stats.status_code == 200
+    nouveau_cookie = change.cookies.get("ibi_session")
+    client.cookies.clear()
+    assert client.get("/api/dashboard/stats", headers=headers).status_code == 401
+
+    if nouveau_cookie:
+        client.cookies.set("ibi_session", nouveau_cookie)
+    assert client.get("/api/dashboard/stats").status_code == 200
 
 
 def test_validation_secret_key_production(monkeypatch):

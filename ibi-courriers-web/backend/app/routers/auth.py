@@ -4,18 +4,21 @@ import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from app.auth import (
     creer_token_acces,
+    hasher_mot_de_passe,
     obtenir_utilisateur_courant,
+    revoquer_sessions_utilisateur,
     verifier_mot_de_passe,
 )
+from app.auth_cookies import definir_cookie_session, effacer_cookie_session
 from app.uploads import valider_contenu_png
 from app.database import get_db
 from app.models import User
-from app.schemas import LoginRequest, TokenResponse, UserResponse, ChangePasswordRequest
+from app.schemas import LoginRequest, LoginResponse, UserResponse, ChangePasswordRequest
 from app.rate_limit import verifier_rate_limit_login
 from app.services import (
     enregistrer_audit,
@@ -40,12 +43,24 @@ def _user_response(user: User) -> UserResponse:
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+def _reponse_avec_session(user: User, message: str) -> JSONResponse:
+    token = creer_token_acces(user.id, user.role, user.token_version or 0)
+    response = JSONResponse(
+        content=LoginResponse(
+            must_change_password=user.must_change_password,
+            message=message,
+        ).model_dump()
+    )
+    definir_cookie_session(response, token)
+    return response
+
+
+@router.post("/login", response_model=LoginResponse)
 def login(
     data: LoginRequest,
     request: Request,
     db: Session = Depends(get_db),
-) -> TokenResponse:
+) -> JSONResponse:
     verifier_rate_limit_login(request)
     user = (
         db.query(User)
@@ -70,11 +85,20 @@ def login(
     enregistrer_audit(db, user.id, "connexion_reussie", data.email, "auth")
     db.commit()
 
-    token = creer_token_acces(user.id, user.role)
-    return TokenResponse(
-        access_token=token,
-        must_change_password=user.must_change_password,
-    )
+    return _reponse_avec_session(user, "Connecté.")
+
+
+@router.post("/logout")
+def logout(
+    user: User = Depends(obtenir_utilisateur_courant),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    revoquer_sessions_utilisateur(user)
+    enregistrer_audit(db, user.id, "deconnexion", user.email, "auth")
+    db.commit()
+    response = JSONResponse(content={"message": "Déconnecté."})
+    effacer_cookie_session(response)
+    return response
 
 
 @router.get("/me", response_model=UserResponse)
@@ -87,9 +111,7 @@ def change_password(
     data: ChangePasswordRequest,
     db: Session = Depends(get_db),
     user: User = Depends(obtenir_utilisateur_courant),
-) -> dict[str, str]:
-    from app.auth import hasher_mot_de_passe
-
+) -> JSONResponse:
     if not verifier_mot_de_passe(data.ancien_mot_de_passe, user.mot_de_passe):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -102,9 +124,11 @@ def change_password(
         )
     user.mot_de_passe = hasher_mot_de_passe(data.nouveau_mot_de_passe)
     user.must_change_password = False
+    revoquer_sessions_utilisateur(user)
     enregistrer_audit(db, user.id, "changement_mot_de_passe", user.email, "auth")
     db.commit()
-    return {"message": "Mot de passe modifié."}
+    db.refresh(user)
+    return _reponse_avec_session(user, "Mot de passe modifié.")
 
 
 @router.post("/signature")

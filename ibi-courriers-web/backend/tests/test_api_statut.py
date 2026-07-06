@@ -76,7 +76,7 @@ def client(db_session):
 
 
 def _auth_header(user: User) -> dict[str, str]:
-    token = creer_token_acces(user.id, user.role)
+    token = creer_token_acces(user.id, user.role, user.token_version or 0)
     return {"Authorization": f"Bearer {token}"}
 
 

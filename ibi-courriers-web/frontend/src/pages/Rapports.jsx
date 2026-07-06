@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { downloadRapportMensuel } from "../api/client";
 import { useToast } from "../context/ToastContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const MOIS = [
   { value: 1, label: "Janvier" },
@@ -18,6 +19,7 @@ const MOIS = [
 ];
 
 export default function Rapports() {
+  usePageTitle("Rapports");
   const { toast } = useToast();
   const now = new Date();
   const [annee, setAnnee] = useState(now.getFullYear());

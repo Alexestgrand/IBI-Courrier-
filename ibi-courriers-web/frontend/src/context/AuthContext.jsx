@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { api, setToken } from "../api/client";
+import { api } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -14,26 +14,24 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     api
       .me()
       .then(setUser)
-      .catch(() => setToken(null))
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email, mot_de_passe) => {
-    const { access_token } = await api.login(email, mot_de_passe);
-    setToken(access_token);
+    await api.login(email, mot_de_passe);
     return refreshUser();
   };
 
-  const logout = () => {
-    setToken(null);
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch {
+      /* session déjà expirée */
+    }
     setUser(null);
   };
 

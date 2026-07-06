@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, exportRechercheCsv, exportRecherchePdf } from "../api/client";
 import Pagination from "../components/Pagination";
 import { useToast } from "../context/ToastContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { BadgeStatut, FILTRES_STATUT, formatDate } from "../utils";
 
 const PAGE_SIZE = 25;
@@ -21,6 +22,7 @@ const URGENCES = [
 ];
 
 export default function Recherche() {
+  usePageTitle("Recherche");
   const { toast } = useToast();
   const [entites, setEntites] = useState([]);
   const [services, setServices] = useState([]);

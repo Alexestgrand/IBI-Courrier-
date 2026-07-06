@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     backup_dir: str = "/data/backups"
     ocr_enabled: bool = True
     migration_dir: str = "/data/migration"
+    cookie_name: str = "ibi_session"
+    cookie_secure: bool | None = None
+    rate_limit_ocr_max: int = 8
+    rate_limit_ocr_window_sec: int = 300
 
     @property
     def notify_emails_list(self) -> list[str]:

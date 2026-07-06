@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 import InstallPrompt from "./InstallPrompt";
@@ -83,6 +83,7 @@ const ICONS = {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const initiales = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const isAdmin = user?.role === "admin";
   const isDg = user?.role === "dg" || isAdmin;
@@ -108,6 +109,9 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
+      <a href="#main-content" className="skip-link">
+        Aller au contenu
+      </a>
       <aside className="sidebar">
         <div className="sidebar__brand">
           <img src="/logo-ibi.png" alt="IBI" className="sidebar__logo" />
@@ -137,7 +141,10 @@ export default function Layout() {
         <div className="sidebar__footer">
           <button
             className="sidebar__link sidebar__logout"
-            onClick={logout}
+            onClick={async () => {
+              await logout();
+              navigate("/login", { replace: true });
+            }}
             type="button"
             aria-label="Déconnexion"
           >
@@ -164,7 +171,7 @@ export default function Layout() {
             <div className="topbar__avatar">{initiales || "?"}</div>
           </div>
         </header>
-        <main className="page-content">
+        <main id="main-content" className="page-content" tabIndex={-1}>
           <Outlet />
         </main>
       </div>

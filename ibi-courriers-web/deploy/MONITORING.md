@@ -59,3 +59,9 @@ sudo systemctl reload caddy
 Les sauvegardes automatiques (cron) et manuelles (admin) partagent le volume Docker `backups` (`/data/backups`).
 
 Installation cron : `./scripts/install-backup-cron.sh` (quotidien à 3h00, logs dans `logs/backup.log`).
+
+En cas d'échec, une alerte e-mail est envoyée aux adresses `NOTIFY_EMAILS` (SMTP requis).
+
+Variables utiles dans `.env` :
+- `COMPOSE_PROJECT_NAME=ibi-courriers-prod` — évite de cibler le mauvais stack Docker
+- `NOTIFY_EMAILS=admin@ibi.ci` — destinataires des alertes sauvegarde

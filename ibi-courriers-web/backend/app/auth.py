@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -28,32 +28,52 @@ def verifier_mot_de_passe(mot_de_passe: str, mot_de_passe_hash: str) -> bool:
     )
 
 
-def creer_token_acces(user_id: int, role: str) -> str:
+def creer_token_acces(user_id: int, role: str, token_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.access_token_expire_minutes
     )
-    payload = {"sub": str(user_id), "role": role, "exp": expire}
+    payload = {
+        "sub": str(user_id),
+        "role": role,
+        "ver": token_version,
+        "exp": expire,
+    }
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
 
 
+def revoquer_sessions_utilisateur(user: User) -> None:
+    user.token_version = (user.token_version or 0) + 1
+
+
+def extraire_token_requete(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str:
+    cookie_token = request.cookies.get(settings.cookie_name)
+    if cookie_token:
+        return cookie_token
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentification requise.",
+    )
+
+
 def obtenir_utilisateur_courant(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
-    if credentials is None or not credentials.credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentification requise.",
-        )
+    token = extraire_token_requete(request, credentials)
     try:
-        payload = jwt.decode(
-            credentials.credentials, settings.secret_key, algorithms=[ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         user_id = int(payload.get("sub", 0))
+        token_version = int(payload.get("ver", 0))
     except (JWTError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token invalide ou expiré.",
+            detail="Session expirée. Veuillez vous reconnecter.",
         ) from exc
 
     user = db.query(User).filter(User.id == user_id, User.actif.is_(True)).first()
@@ -61,6 +81,11 @@ def obtenir_utilisateur_courant(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Utilisateur introuvable.",
+        )
+    if token_version != (user.token_version or 0):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expirée. Veuillez vous reconnecter.",
         )
     return user
 

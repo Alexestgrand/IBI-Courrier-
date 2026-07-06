@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from app.auth import hasher_mot_de_passe
+from app.auth import hasher_mot_de_passe, revoquer_sessions_utilisateur
 from app.constants import ROLES_VALIDES
 from app.models import User
 from app.services import enregistrer_audit
@@ -141,6 +141,8 @@ def mettre_a_jour_utilisateur(
         user.role = role
     if actif is not None:
         user.actif = actif
+        if not actif:
+            revoquer_sessions_utilisateur(user)
 
     enregistrer_audit(
         db, admin.id, "modification_utilisateur", f"Utilisateur {user.email}", "users"
@@ -166,6 +168,7 @@ def reinitialiser_mot_de_passe(
 
     user.mot_de_passe = hasher_mot_de_passe(nouveau)
     user.must_change_password = True
+    revoquer_sessions_utilisateur(user)
     enregistrer_audit(
         db, admin.id, "reinitialisation_mot_de_passe", f"Utilisateur {user.email}", "users"
     )

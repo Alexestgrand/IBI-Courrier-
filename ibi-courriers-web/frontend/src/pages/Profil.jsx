@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import SignaturePad from "../components/SignaturePad";
 
 export default function Profil() {
+  usePageTitle("Mon profil");
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();

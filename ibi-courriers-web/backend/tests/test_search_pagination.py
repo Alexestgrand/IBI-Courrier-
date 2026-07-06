@@ -68,7 +68,7 @@ def client(db_session):
 
 
 def _auth(user: User) -> dict[str, str]:
-    return {"Authorization": f"Bearer {creer_token_acces(user.id, user.role)}"}
+    return {"Authorization": f"Bearer {creer_token_acces(user.id, user.role, user.token_version or 0)}"}
 
 
 def test_recherche_paginee(client, db_session):

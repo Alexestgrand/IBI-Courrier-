@@ -1,4 +1,5 @@
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const SECTIONS = {
   all: [
@@ -90,6 +91,7 @@ const LIBELLES_ROLE = {
 };
 
 export default function Aide() {
+  usePageTitle("Aide");
   const { user } = useAuth();
   const role = user?.role || "reception";
 

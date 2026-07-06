@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import AlerteErreur from "../components/AlerteErreur";
 import { useToast } from "../context/ToastContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { formatDate } from "../utils";
 
 const ROLES = [
@@ -30,6 +31,7 @@ const genererMotDePasse = (longueur = 12) => {
 };
 
 export default function Utilisateurs() {
+  usePageTitle("Utilisateurs");
   const { toast } = useToast();
   const [users, setUsers] = useState([]);
   const [audit, setAudit] = useState([]);

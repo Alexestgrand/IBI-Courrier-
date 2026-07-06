@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { URGENCES } from "../utils";
 
 export default function NouveauSortant() {
+  usePageTitle("Nouveau courrier sortant");
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [entites, setEntites] = useState([]);

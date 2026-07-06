@@ -5,6 +5,7 @@ import AlerteErreur from "./AlerteErreur";
 import Pagination from "./Pagination";
 import { useAuth } from "../context/AuthContext";
 import { useDebounce } from "../hooks/useDebounce";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { BadgeStatut, FILTRES_STATUT, formatDate, servicePourRole } from "../utils";
 
 const PAGE_SIZE = 25;
@@ -60,6 +61,7 @@ function cellule(c, col) {
 
 export default function ListeCourriers({ type }) {
   const cfg = CONFIG[type];
+  usePageTitle(cfg.title);
   const { user } = useAuth();
   const aUnService = Boolean(servicePourRole(user?.role));
   const [courriers, setCourriers] = useState([]);
@@ -77,17 +79,13 @@ export default function ListeCourriers({ type }) {
   const rechercheDebounced = useDebounce(recherche, 300);
 
   useEffect(() => {
-    let cancelled = false;
-    api.entites()
-      .then((data) => {
-        if (!cancelled) setEntites(data);
-      })
-      .catch(() => {
-        if (!cancelled) setEntites([]);
+    const controller = new AbortController();
+    api.entites(controller.signal)
+      .then((data) => setEntites(data))
+      .catch((err) => {
+        if (err.name !== "AbortError") setEntites([]);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -102,56 +100,59 @@ export default function ListeCourriers({ type }) {
   }, [statut, entiteId, rechercheDebounced, monService]);
 
   const chargerListe = () => {
+    const controller = new AbortController();
     setLoading(true);
     setErreur("");
     return cfg
-      .fetch({
-        statut: statut || undefined,
-        entite_id: entiteId || undefined,
-        recherche: rechercheDebounced || undefined,
-        mon_service: monService || undefined,
-        page,
-        page_size: PAGE_SIZE,
-      })
+      .fetch(
+        {
+          statut: statut || undefined,
+          entite_id: entiteId || undefined,
+          recherche: rechercheDebounced || undefined,
+          mon_service: monService || undefined,
+          page,
+          page_size: PAGE_SIZE,
+        },
+        controller.signal,
+      )
       .then((data) => {
         setCourriers(data.items);
         setMeta({ page: data.page, pages: data.pages, total: data.total });
       })
       .catch((err) => {
+        if (err.name === "AbortError") return;
         setErreur(err.message || "Impossible de charger les courriers.");
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setErreur("");
     cfg
-      .fetch({
-        statut: statut || undefined,
-        entite_id: entiteId || undefined,
-        recherche: rechercheDebounced || undefined,
-        mon_service: monService || undefined,
-        page,
-        page_size: PAGE_SIZE,
-      })
+      .fetch(
+        {
+          statut: statut || undefined,
+          entite_id: entiteId || undefined,
+          recherche: rechercheDebounced || undefined,
+          mon_service: monService || undefined,
+          page,
+          page_size: PAGE_SIZE,
+        },
+        controller.signal,
+      )
       .then((data) => {
-        if (cancelled) return;
         setCourriers(data.items);
         setMeta({ page: data.page, pages: data.pages, total: data.total });
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (err.name !== "AbortError") {
           setErreur(err.message || "Impossible de charger les courriers.");
         }
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [type, statut, entiteId, rechercheDebounced, monService, page]);
 
   return (
@@ -210,7 +211,9 @@ export default function ListeCourriers({ type }) {
 
       <div className="panel table-wrap">
         {loading ? (
-          <p className="loading-text">Chargement…</p>
+          <p className="loading-text" role="status" aria-live="polite">
+            Chargement des courriers…
+          </p>
         ) : erreur ? null : courriers.length === 0 ? (
           <div className="empty-state">
             <p>{cfg.emptyMessage}</p>

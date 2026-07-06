@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, downloadPdf, downloadPiece, previewPiece, printPdf, printPiece } from "../api/client";
 import AlerteErreur from "../components/AlerteErreur";
+import { usePageTitle } from "../hooks/usePageTitle";
 import { useToast } from "../context/ToastContext";
 import { BadgeStatut, formatDate, formatTaille, LIBELLES_STATUT } from "../utils";
 
@@ -24,6 +25,8 @@ export default function CourrierDetail() {
   const [form, setForm] = useState({});
   const [chargeLoading, setChargeLoading] = useState(true);
   const [chargeErreur, setChargeErreur] = useState("");
+
+  usePageTitle(courrier ? `Courrier ${courrier.numero}` : "Courrier");
 
   const charger = () => {
     setChargeLoading(true);
