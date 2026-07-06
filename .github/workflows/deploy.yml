@@ -72,13 +72,24 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Tester la connectivité SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          echo "Résolution DNS :"
+          getent hosts "${VPS_HOST}" || nslookup "${VPS_HOST}" || true
+          echo "Test port 22 (timeout 15s) :"
+          nc -zv -w 15 "${VPS_HOST}" 22
+
       - name: Déployer sur le VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-            "${VPS_USER}@${VPS_HOST}" << 'ENDSSH'
+          SSH_OPTS="-i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3"
+          for attempt in 1 2 3; do
+            echo "Tentative SSH ${attempt}/3..."
+            if ssh ${SSH_OPTS} "${VPS_USER}@${VPS_HOST}" << 'ENDSSH'
           set -euo pipefail
           cd ~/IBI-Courrier-
           git fetch origin main
@@ -90,3 +101,13 @@ jobs:
           ./scripts/wait-health.sh
           echo "Déploiement GitHub Actions OK"
           ENDSSH
+            then
+              exit 0
+            fi
+            if [ "${attempt}" -lt 3 ]; then
+              echo "Échec SSH, nouvel essai dans 45s..."
+              sleep 45
+            fi
+          done
+          echo "SSH impossible après 3 tentatives — vérifier pare-feu OVH (port 22) et fail2ban sur le VPS"
+          exit 1
