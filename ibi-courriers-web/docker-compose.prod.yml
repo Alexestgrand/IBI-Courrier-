@@ -33,6 +33,7 @@ services:
       NOTIFY_EMAILS: ${NOTIFY_EMAILS:-}
       BACKUP_DIR: /data/backups
       MIGRATION_DIR: /data/migration
+      OCR_ENABLED: ${OCR_ENABLED:-true}
     volumes:
       - uploads:/data/uploads
       - backups:/data/backups

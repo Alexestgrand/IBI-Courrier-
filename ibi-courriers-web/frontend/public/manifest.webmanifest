@@ -3,10 +3,13 @@
   "short_name": "IBI Courriers",
   "description": "Gestion des courriers — Groupe IBI Côte d'Ivoire",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0a1628",
   "theme_color": "#1B2A4A",
   "lang": "fr",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/logo-ibi.png",

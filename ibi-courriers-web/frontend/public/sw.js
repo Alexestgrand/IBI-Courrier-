@@ -1,5 +1,5 @@
-const CACHE = "ibi-courriers-v1";
-const PRECACHE = ["/", "/index.html", "/logo-ibi.png", "/manifest.webmanifest"];
+const CACHE = "ibi-courriers-v2";
+const PRECACHE = ["/", "/index.html", "/offline.html", "/logo-ibi.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -20,6 +20,21 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.pathname.startsWith("/api")) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, clone));
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match("/offline.html"))
+        )
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {

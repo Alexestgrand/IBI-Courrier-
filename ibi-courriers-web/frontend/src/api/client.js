@@ -166,6 +166,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ entite_defaut, dry_run }),
     }),
+
+  ocrExtract: (file) => {
+    const form = new FormData();
+    form.append("fichier", file);
+    return request("/ocr/extract", { method: "POST", body: form });
+  },
+
+  uploadSignature: (blob) => {
+    const form = new FormData();
+    form.append("fichier", blob, "signature.png");
+    return request("/auth/signature", { method: "POST", body: form });
+  },
+
+  deleteSignature: () => request("/auth/signature", { method: "DELETE" }),
+
+  signerCourrier: (id) => request(`/courriers/${id}/signer`, { method: "POST" }),
 };
 
 function downloadBlob(path, filename) {

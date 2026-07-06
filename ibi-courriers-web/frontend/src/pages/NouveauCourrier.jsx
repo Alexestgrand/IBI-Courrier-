@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
+import { useToast } from "../context/ToastContext";
 import { formatTaille } from "../utils";
 
 const URGENCES = [
@@ -11,12 +12,14 @@ const URGENCES = [
 
 export default function NouveauCourrier() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const fileInputRef = useRef(null);
   const [entites, setEntites] = useState([]);
   const [services, setServices] = useState([]);
   const [fichiers, setFichiers] = useState([]);
   const [erreur, setErreur] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
   const [form, setForm] = useState({
@@ -48,6 +51,33 @@ export default function NouveauCourrier() {
 
   const retirerFichier = (index) => {
     setFichiers((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const analyserScan = async () => {
+    const fichier = fichiers.find((f) =>
+      /\.(pdf|jpe?g|png)$/i.test(f.name)
+    );
+    if (!fichier) {
+      toast("Ajoutez un PDF ou une image pour l'analyse OCR.", "error");
+      return;
+    }
+    setOcrLoading(true);
+    try {
+      const res = await api.ocrExtract(fichier);
+      const s = res.suggestions || {};
+      setForm((f) => ({
+        ...f,
+        expediteur: s.expediteur || f.expediteur,
+        reference_document: s.reference_document || f.reference_document,
+        objet: s.objet || f.objet,
+      }));
+      if (res.avertissement) toast(res.avertissement, "error");
+      else toast(`Analyse terminée (confiance ${res.confiance}).`, "success");
+    } catch (e) {
+      toast(e.message, "error");
+    } finally {
+      setOcrLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -211,6 +241,17 @@ export default function NouveauCourrier() {
                 </li>
               ))}
             </ul>
+          )}
+          {fichiers.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ marginTop: "0.75rem" }}
+              onClick={analyserScan}
+              disabled={ocrLoading}
+            >
+              {ocrLoading ? "Analyse OCR…" : "Analyser le scan (OCR)"}
+            </button>
           )}
         </div>
 

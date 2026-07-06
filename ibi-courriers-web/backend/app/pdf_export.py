@@ -146,6 +146,25 @@ def generer_pdf_sortant(courrier: dict, chemin_absolu: str) -> str:
     elements.append(Paragraph(f"Le service {service}", style_pied))
     elements.append(Paragraph("Groupe IBI", style_pied))
 
+    signature_chemin = courrier.get("signature_chemin")
+    signataire_nom = courrier.get("signataire_nom")
+    if signature_chemin and os.path.isfile(signature_chemin):
+        elements.append(Spacer(1, 0.5 * cm))
+        try:
+            sig = Image(signature_chemin, width=5 * cm, height=2 * cm)
+            sig.hAlign = "RIGHT"
+            elements.append(sig)
+            if signataire_nom:
+                style_sig = ParagraphStyle(
+                    "SignatureNom",
+                    parent=styles["Normal"],
+                    fontSize=9,
+                    alignment=TA_RIGHT,
+                )
+                elements.append(Paragraph(_echapper_html(signataire_nom), style_sig))
+        except Exception:
+            pass
+
     doc.build(elements)
     return chemin_absolu
 

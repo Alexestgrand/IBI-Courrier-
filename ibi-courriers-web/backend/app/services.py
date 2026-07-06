@@ -131,7 +131,22 @@ def courrier_vers_liste(c: Courrier) -> dict:
     }
 
 
-def courrier_vers_detail(c: Courrier, role: str) -> dict:
+def courrier_vers_detail(c: Courrier, role: str, user: User | None = None) -> dict:
+    signe_par_nom = None
+    if getattr(c, "signataire", None):
+        signe_par_nom = f"{c.signataire.prenom} {c.signataire.nom}"
+
+    import_scan = c.corps_courrier == "(Courrier importé - PDF scanné)"
+    peut_signer = bool(
+        user
+        and c.type == "sortant"
+        and c.statut in ("valide", "archive")
+        and user.role in ("dg", "admin")
+        and user.chemin_signature
+        and c.signe_par_id is None
+        and not import_scan
+    )
+
     return {
         "id": c.id,
         "numero": c.numero,
@@ -152,6 +167,9 @@ def courrier_vers_detail(c: Courrier, role: str) -> dict:
         "statut": c.statut,
         "observations": c.observations,
         "chemin_pdf": c.chemin_pdf,
+        "signe_par_nom": signe_par_nom,
+        "signe_le": c.signe_le,
+        "peut_signer": peut_signer,
         "pieces_jointes": c.pieces_jointes,
         "statuts_possibles": statuts_possibles(role, c.statut),
         "created_at": c.created_at,
@@ -892,3 +910,77 @@ def lister_audit(db: Session, module: str | None = None, limite: int = 50) -> li
             }
         )
     return resultat
+
+
+def enregistrer_signature_utilisateur(
+    db: Session, user: User, contenu_png: bytes
+) -> str:
+    sig_dir = os.path.join(settings.upload_dir, "signatures")
+    os.makedirs(sig_dir, exist_ok=True)
+    chemin = os.path.join(sig_dir, f"user_{user.id}.png")
+    with open(chemin, "wb") as f:
+        f.write(contenu_png)
+    user.chemin_signature = chemin
+    db.commit()
+    return chemin
+
+
+def supprimer_signature_utilisateur(db: Session, user: User) -> None:
+    if user.chemin_signature and os.path.isfile(user.chemin_signature):
+        os.remove(user.chemin_signature)
+    user.chemin_signature = None
+    db.commit()
+
+
+def signer_courrier_sortant(db: Session, user: User, courrier_id: int) -> Courrier:
+    if user.role not in ("dg", "admin"):
+        raise ValueError("Seuls la DG et l'admin peuvent signer.")
+    if not user.chemin_signature or not os.path.isfile(user.chemin_signature):
+        raise ValueError("Enregistrez d'abord votre signature dans votre profil.")
+
+    courrier = (
+        db.query(Courrier)
+        .options(
+            joinedload(Courrier.entite),
+            joinedload(Courrier.pieces_jointes),
+            joinedload(Courrier.signataire),
+        )
+        .filter(Courrier.id == courrier_id)
+        .first()
+    )
+    if courrier is None:
+        raise ValueError("Courrier introuvable.")
+    if courrier.type != "sortant":
+        raise ValueError("La signature s'applique aux courriers sortants.")
+    if courrier.statut not in ("valide", "archive"):
+        raise ValueError("Le courrier doit être validé avant signature.")
+    if courrier.corps_courrier == "(Courrier importé - PDF scanné)":
+        raise ValueError("Signature indisponible sur un PDF importé.")
+    if courrier.signe_par_id is not None:
+        raise ValueError("Ce courrier est déjà signé.")
+
+    from app.pdf_export import generer_pdf_sortant
+
+    exports_dir = os.path.join(settings.upload_dir, "exports")
+    os.makedirs(exports_dir, exist_ok=True)
+    chemin_pdf = os.path.join(exports_dir, f"{courrier.numero}.pdf")
+
+    detail = courrier_vers_detail(courrier, user.role, user)
+    detail["signature_chemin"] = user.chemin_signature
+    detail["signataire_nom"] = f"{user.prenom} {user.nom}"
+    generer_pdf_sortant(detail, chemin_pdf)
+
+    courrier.chemin_pdf = chemin_pdf
+    courrier.signe_par_id = user.id
+    courrier.signe_le = datetime.now(timezone.utc)
+
+    enregistrer_audit(
+        db,
+        user.id,
+        "signature_courrier",
+        f"Signature {courrier.numero}",
+        "courriers",
+    )
+    db.commit()
+    db.refresh(courrier)
+    return courrier

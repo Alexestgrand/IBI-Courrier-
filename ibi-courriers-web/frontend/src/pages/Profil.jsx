@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import SignaturePad from "../components/SignaturePad";
 
 export default function Profil() {
   const { user, refreshUser } = useAuth();
@@ -16,6 +17,7 @@ export default function Profil() {
   const [confirm, setConfirm] = useState("");
   const [erreur, setErreur] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sigLoading, setSigLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -44,6 +46,34 @@ export default function Profil() {
     }
   };
 
+  const enregistrerSignature = async (blob) => {
+    setSigLoading(true);
+    try {
+      await api.uploadSignature(blob);
+      await refreshUser();
+      toast("Signature enregistrée.", "success");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setSigLoading(false);
+    }
+  };
+
+  const supprimerSignature = async () => {
+    setSigLoading(true);
+    try {
+      await api.deleteSignature();
+      await refreshUser();
+      toast("Signature supprimée.", "success");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setSigLoading(false);
+    }
+  };
+
+  const peutSigner = user?.role === "dg" || user?.role === "admin";
+
   return (
     <div>
       <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>
@@ -68,6 +98,29 @@ export default function Profil() {
           <dd>{user?.role}</dd>
         </dl>
       </div>
+
+      {peutSigner && (
+        <div className="panel" style={{ marginBottom: "1rem" }}>
+          <h3 className="panel__title">Signature électronique</h3>
+          <p className="panel__hint">
+            Dessinez votre signature pour l&apos;apposer sur les courriers sortants validés.
+          </p>
+          {user?.a_signature && (
+            <p className="text-secondary" style={{ marginBottom: "0.75rem" }}>
+              Signature enregistrée.{" "}
+              <button
+                type="button"
+                className="btn-link"
+                onClick={supprimerSignature}
+                disabled={sigLoading}
+              >
+                Supprimer
+              </button>
+            </p>
+          )}
+          <SignaturePad onSave={enregistrerSignature} disabled={sigLoading} />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="panel form-grid">
         <h3 className="panel__title" style={{ gridColumn: "1 / -1", marginBottom: 0 }}>

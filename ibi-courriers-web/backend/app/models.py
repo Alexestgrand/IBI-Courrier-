@@ -35,6 +35,7 @@ class User(Base):
     derniere_connexion: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    chemin_signature: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class Entite(Base):
@@ -76,6 +77,10 @@ class Courrier(Base):
     statut: Mapped[str] = mapped_column(String(20), default="en_attente", nullable=False)
     observations: Mapped[str | None] = mapped_column(Text, nullable=True)
     chemin_pdf: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    signe_par_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    signe_le: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -85,6 +90,7 @@ class Courrier(Base):
     )
 
     entite: Mapped["Entite"] = relationship(back_populates="courriers")
+    signataire: Mapped["User | None"] = relationship(foreign_keys=[signe_par_id])
     pieces_jointes: Mapped[list["PieceJointe"]] = relationship(
         back_populates="courrier", cascade="all, delete-orphan"
     )

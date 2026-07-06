@@ -83,6 +83,19 @@ export default function CourrierDetail() {
     }
   };
 
+  const signerPdf = async () => {
+    setLoading(true);
+    try {
+      const c = await api.signerCourrier(id);
+      setCourrier(c);
+      toast("Courrier signé — PDF mis à jour.", "success");
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!courrier) return <p className="loading-text">Chargement…</p>;
 
   const listeRetour =
@@ -120,6 +133,16 @@ export default function CourrierDetail() {
               >
                 Imprimer PDF
               </button>
+              {courrier.peut_signer && (
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={loading}
+                  onClick={signerPdf}
+                >
+                  Signer le PDF
+                </button>
+              )}
             </>
           )}
           {peutModifier && !edition && (
@@ -136,6 +159,12 @@ export default function CourrierDetail() {
           <span className="text-secondary">
             {courrier.entite_nom} — {courrier.type === "entrant" ? "Entrant" : "Sortant"}
           </span>
+          {courrier.signe_par_nom && (
+            <span className="text-secondary">
+              Signé par {courrier.signe_par_nom}
+              {courrier.signe_le ? ` — ${formatDate(courrier.signe_le)}` : ""}
+            </span>
+          )}
         </div>
 
         {edition ? (

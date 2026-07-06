@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
+import InstallPrompt from "./InstallPrompt";
+import OfflineBanner from "./OfflineBanner";
 
 const ICONS = {
   dashboard: (
@@ -143,6 +145,8 @@ export default function Layout() {
       </aside>
 
       <div className="app-main">
+        <OfflineBanner />
+        <InstallPrompt />
         <header className="topbar">
           <NotificationBell />
           <div className="topbar__user">

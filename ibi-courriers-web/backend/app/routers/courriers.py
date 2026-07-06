@@ -31,6 +31,7 @@ from app.services import (
     lister_services,
     modifier_courrier,
     obtenir_historique,
+    signer_courrier_sortant,
     stats_dashboard,
 )
 
@@ -127,11 +128,15 @@ async def post_courrier_sortant(
         )
         courrier = (
             db.query(Courrier)
-            .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+            .options(
+            joinedload(Courrier.entite),
+            joinedload(Courrier.pieces_jointes),
+            joinedload(Courrier.signataire),
+        )
             .filter(Courrier.id == courrier.id)
             .first()
         )
-        return courrier_vers_detail(courrier, user.role)
+        return courrier_vers_detail(courrier, user.role, user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -192,11 +197,15 @@ async def post_courrier_entrant(
         )
         courrier = (
             db.query(Courrier)
-            .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+            .options(
+            joinedload(Courrier.entite),
+            joinedload(Courrier.pieces_jointes),
+            joinedload(Courrier.signataire),
+        )
             .filter(Courrier.id == courrier.id)
             .first()
         )
-        return courrier_vers_detail(courrier, user.role)
+        return courrier_vers_detail(courrier, user.role, user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -209,13 +218,17 @@ def get_courrier(
 ):
     courrier = (
         db.query(Courrier)
-        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .options(
+            joinedload(Courrier.entite),
+            joinedload(Courrier.pieces_jointes),
+            joinedload(Courrier.signataire),
+        )
         .filter(Courrier.id == courrier_id)
         .first()
     )
     if courrier is None:
         raise HTTPException(status_code=404, detail="Courrier introuvable.")
-    return courrier_vers_detail(courrier, user.role)
+    return courrier_vers_detail(courrier, user.role, user)
 
 
 @router.patch("/courriers/{courrier_id}", response_model=CourrierDetail)
@@ -228,7 +241,7 @@ def patch_courrier(
     try:
         champs = data.model_dump(exclude_unset=True)
         courrier = modifier_courrier(db, user, courrier_id, champs)
-        return courrier_vers_detail(courrier, user.role)
+        return courrier_vers_detail(courrier, user.role, user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -244,7 +257,30 @@ def patch_statut(
         courrier = changer_statut_courrier(
             db, user, courrier_id, data.nouveau_statut, data.observation
         )
-        return courrier_vers_detail(courrier, user.role)
+        return courrier_vers_detail(courrier, user.role, user)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/courriers/{courrier_id}/signer", response_model=CourrierDetail)
+def post_signer_courrier(
+    courrier_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(obtenir_utilisateur_courant),
+):
+    try:
+        courrier = signer_courrier_sortant(db, user, courrier_id)
+        courrier = (
+            db.query(Courrier)
+            .options(
+                joinedload(Courrier.entite),
+                joinedload(Courrier.pieces_jointes),
+                joinedload(Courrier.signataire),
+            )
+            .filter(Courrier.id == courrier.id)
+            .first()
+        )
+        return courrier_vers_detail(courrier, user.role, user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -266,7 +302,11 @@ def download_pdf_courrier(
 ):
     courrier = (
         db.query(Courrier)
-        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .options(
+            joinedload(Courrier.entite),
+            joinedload(Courrier.pieces_jointes),
+            joinedload(Courrier.signataire),
+        )
         .filter(Courrier.id == courrier_id)
         .first()
     )

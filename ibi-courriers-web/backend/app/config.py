@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     smtp_from: str = "courriers@ibi.ci"
     notify_emails: str = ""
     backup_dir: str = "/data/backups"
+    ocr_enabled: bool = True
     migration_dir: str = "/data/migration"
 
     @property

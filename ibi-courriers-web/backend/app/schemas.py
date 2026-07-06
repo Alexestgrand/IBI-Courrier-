@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     role: str
     actif: bool
     must_change_password: bool = False
+    a_signature: bool = False
     derniere_connexion: datetime | None = None
 
     model_config = {"from_attributes": True}
@@ -115,6 +116,9 @@ class CourrierDetail(BaseModel):
     statut: str
     observations: str | None
     chemin_pdf: str | None = None
+    signe_par_nom: str | None = None
+    signe_le: datetime | None = None
+    peut_signer: bool = False
     pieces_jointes: list[PieceJointeResponse] = Field(default_factory=list)
     statuts_possibles: list[str] = Field(default_factory=list)
     created_at: datetime
@@ -194,6 +198,21 @@ class MigrationStatusResponse(BaseModel):
 class MigrationRunRequest(BaseModel):
     entite_defaut: str = "IBI"
     dry_run: bool = False
+
+
+class OcrSuggestions(BaseModel):
+    expediteur: str | None = None
+    reference_document: str | None = None
+    objet: str | None = None
+
+
+class OcrExtractionResponse(BaseModel):
+    texte_brut: str = ""
+    methode: str
+    ocr_disponible: bool
+    avertissement: str | None = None
+    suggestions: OcrSuggestions = Field(default_factory=OcrSuggestions)
+    confiance: str = "basse"
 
 
 class UserCreateRequest(BaseModel):

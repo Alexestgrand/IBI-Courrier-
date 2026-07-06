@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.health import verifier_sante
 from app.migrations import appliquer_migrations_schema
-from app.routers import admin, auth, courriers, notifications, rapports, search, users
+from app.routers import admin, auth, courriers, notifications, ocr, rapports, search, users
 from app.seed import initialiser_donnees
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,7 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(courriers.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(ocr.router, prefix="/api")
 app.include_router(rapports.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
