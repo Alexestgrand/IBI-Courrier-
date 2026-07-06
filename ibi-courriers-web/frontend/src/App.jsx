@@ -12,6 +12,8 @@ import Recherche from "./pages/Recherche";
 import Utilisateurs from "./pages/Utilisateurs";
 import Sauvegardes from "./pages/Sauvegardes";
 import Aide from "./pages/Aide";
+import AValider from "./pages/AValider";
+import Rapports from "./pages/Rapports";
 import Profil from "./pages/Profil";
 
 function PrivateRoute({ children }) {
@@ -48,6 +50,22 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function DgRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <p className="loading-text" style={{ padding: "2rem" }}>
+        Chargement…
+      </p>
+    );
+  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "dg" && user.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   return (
     <>
@@ -69,6 +87,22 @@ export default function App() {
           <Route path="recherche" element={<Recherche />} />
           <Route path="profil" element={<Profil />} />
           <Route path="aide" element={<Aide />} />
+          <Route
+            path="dg/a-valider"
+            element={
+              <DgRoute>
+                <AValider />
+              </DgRoute>
+            }
+          />
+          <Route
+            path="rapports"
+            element={
+              <DgRoute>
+                <Rapports />
+              </DgRoute>
+            }
+          />
           <Route
             path="admin/utilisateurs"
             element={

@@ -139,6 +139,33 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ nom_fichier, confirmation }),
     }),
+
+  notificationCount: () => request("/notifications/unread-count"),
+
+  notifications: (params = {}) => request(`/notifications${buildQuery(params)}`),
+
+  markNotificationRead: (id) =>
+    request(`/notifications/${id}/read`, { method: "PATCH" }),
+
+  markAllNotificationsRead: () =>
+    request("/notifications/read-all", { method: "POST" }),
+
+  courriersAValider: (params = {}) =>
+    request(`/courriers/a-valider${buildQuery(params)}`),
+
+  migrationStatus: () => request("/admin/migration"),
+
+  uploadMigrationDb: (file) => {
+    const form = new FormData();
+    form.append("fichier", file);
+    return request("/admin/migration/upload", { method: "POST", body: form });
+  },
+
+  runMigration: (entite_defaut = "IBI", dry_run = false) =>
+    request("/admin/migration/run", {
+      method: "POST",
+      body: JSON.stringify({ entite_defaut, dry_run }),
+    }),
 };
 
 function downloadBlob(path, filename) {
@@ -240,4 +267,9 @@ export function printPdf(courrierId, numero) {
 
 export function downloadBackup(nom) {
   return downloadBlob(`/admin/backups/${encodeURIComponent(nom)}/download`, nom);
+}
+
+export function downloadRapportMensuel(annee, mois) {
+  const qs = buildQuery({ annee, mois });
+  return downloadBlob(`/rapports/mensuel${qs}`, `rapport_mensuel_${annee}_${String(mois).padStart(2, "0")}.pdf`);
 }

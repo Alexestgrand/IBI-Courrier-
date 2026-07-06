@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     smtp_from: str = "courriers@ibi.ci"
     notify_emails: str = ""
     backup_dir: str = "/data/backups"
+    migration_dir: str = "/data/migration"
 
     @property
     def notify_emails_list(self) -> list[str]:

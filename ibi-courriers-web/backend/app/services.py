@@ -6,7 +6,7 @@ import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import UploadFile
-from sqlalchemy import func, or_
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -224,6 +224,116 @@ def lister_courriers(
     }
 
 
+def lister_a_valider(
+    db: Session,
+    page: int = 1,
+    page_size: int = 25,
+) -> dict:
+    """Courriers entrants transmis, triés par urgence puis ancienneté."""
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+
+    urgence_order = case(
+        (Courrier.urgence == "très urgent", 0),
+        (Courrier.urgence == "urgent", 1),
+        else_=2,
+    )
+
+    query = (
+        db.query(Courrier)
+        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .filter(Courrier.type == "entrant", Courrier.statut == "transmis")
+    )
+
+    total = query.count()
+    pages = max(1, (total + page_size - 1) // page_size)
+    if page > pages:
+        page = pages
+
+    courriers = (
+        query.order_by(urgence_order, Courrier.created_at.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return {
+        "items": [courrier_vers_liste(c) for c in courriers],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
+
+
+def stats_rapport_mensuel(db: Session, annee: int, mois: int) -> dict:
+    """Statistiques pour le rapport mensuel PDF."""
+    if mois < 1 or mois > 12:
+        raise ValueError("Mois invalide.")
+
+    debut = datetime(annee, mois, 1, tzinfo=timezone.utc)
+    if mois == 12:
+        fin = datetime(annee + 1, 1, 1, tzinfo=timezone.utc)
+    else:
+        fin = datetime(annee, mois + 1, 1, tzinfo=timezone.utc)
+
+    courriers = (
+        db.query(Courrier)
+        .filter(Courrier.created_at >= debut, Courrier.created_at < fin)
+        .all()
+    )
+
+    par_service: dict[str, int] = {}
+    par_statut: dict[str, int] = {}
+    delais_par_service: dict[str, list[float]] = {}
+
+    for courrier in courriers:
+        service = (
+            courrier.service_destinataire
+            or courrier.service_emetteur
+            or "Non renseigné"
+        )
+        par_service[service] = par_service.get(service, 0) + 1
+        par_statut[courrier.statut] = par_statut.get(courrier.statut, 0) + 1
+
+        log = (
+            db.query(StatutLog)
+            .filter(
+                StatutLog.courrier_id == courrier.id,
+                StatutLog.nouveau_statut.in_(("valide", "rejete")),
+            )
+            .order_by(StatutLog.date.asc())
+            .first()
+        )
+        if log and courrier.created_at:
+            created = courrier.created_at
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            traite = log.date
+            if traite.tzinfo is None:
+                traite = traite.replace(tzinfo=timezone.utc)
+            jours = (traite - created).total_seconds() / 86400
+            delais_par_service.setdefault(service, []).append(jours)
+
+    delais_moyens = {
+        service: round(sum(valeurs) / len(valeurs), 1)
+        for service, valeurs in delais_par_service.items()
+        if valeurs
+    }
+
+    return {
+        "annee": annee,
+        "mois": mois,
+        "total": len(courriers),
+        "par_service": dict(
+            sorted(par_service.items(), key=lambda item: item[1], reverse=True)
+        ),
+        "par_statut": par_statut,
+        "delais_moyens_jours": dict(
+            sorted(delais_moyens.items(), key=lambda item: item[1], reverse=True)
+        ),
+    }
+
+
 async def creer_courrier_entrant(
     db: Session,
     user: User,
@@ -284,6 +394,14 @@ async def creer_courrier_entrant(
     enregistrer_audit(
         db, user.id, "creation_courrier", f"Courrier {numero}", "courriers"
     )
+
+    from app.services_notifications import notifier_nouveau_courrier
+
+    try:
+        notifier_nouveau_courrier(db, courrier)
+    except Exception:
+        pass
+
     db.commit()
     db.refresh(courrier)
 
@@ -338,6 +456,14 @@ def changer_statut_courrier(
         f"{courrier.numero} : {ancien} → {nouveau_statut}",
         "courriers",
     )
+
+    from app.services_notifications import notifier_changement_statut
+
+    try:
+        notifier_changement_statut(db, courrier, ancien, nouveau_statut, user.id)
+    except Exception:
+        pass
+
     db.commit()
     db.refresh(courrier)
     return courrier

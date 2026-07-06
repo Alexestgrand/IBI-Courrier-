@@ -244,6 +244,126 @@ def generer_rapport_recherche(
     return chemin_sortie
 
 
+MOIS_FR = (
+    "",
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+)
+
+
+def generer_rapport_mensuel(stats: dict, chemin_sortie: str) -> str:
+    """Génère le rapport mensuel d'activité (PDF)."""
+    doc = SimpleDocTemplate(
+        chemin_sortie,
+        pagesize=A4,
+        rightMargin=1.5 * cm,
+        leftMargin=1.5 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    titre_style = ParagraphStyle(
+        "TitreMensuel",
+        parent=styles["Heading1"],
+        textColor=colors.HexColor("#1B2A4A"),
+        spaceAfter=8,
+        alignment=TA_CENTER,
+    )
+
+    annee = stats["annee"]
+    mois = stats["mois"]
+    libelle_mois = MOIS_FR[mois] if 1 <= mois <= 12 else str(mois)
+
+    elements: list = []
+    _ajouter_logo(elements, 3.0)
+    elements.append(Paragraph("IBI COURRIERS", titre_style))
+    elements.append(
+        Paragraph(
+            f"Rapport mensuel — {libelle_mois} {annee}",
+            styles["Heading2"],
+        )
+    )
+    elements.append(
+        Paragraph(
+            f"Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}",
+            styles["Normal"],
+        )
+    )
+    elements.append(Spacer(1, 0.5 * cm))
+    elements.append(
+        Paragraph(
+            f"<b>Total courriers enregistrés : {stats['total']}</b>",
+            styles["Normal"],
+        )
+    )
+    elements.append(Spacer(1, 0.4 * cm))
+
+    def _tableau_titre(titre: str) -> None:
+        elements.append(Paragraph(f"<b>{titre}</b>", styles["Heading3"]))
+        elements.append(Spacer(1, 0.2 * cm))
+
+    def _tableau_simple(lignes: list[list[str]], entetes: list[str]) -> None:
+        donnees = [entetes, *lignes]
+        table = Table(donnees, repeatRows=1)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1B2A4A")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                    ("PADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        elements.append(table)
+        elements.append(Spacer(1, 0.4 * cm))
+
+    par_service = stats.get("par_service") or {}
+    if par_service:
+        _tableau_titre("Volume par service")
+        _tableau_simple(
+            [[service, str(count)] for service, count in par_service.items()],
+            ["Service", "Nombre"],
+        )
+    else:
+        elements.append(Paragraph("Aucun courrier sur la période.", styles["Normal"]))
+        elements.append(Spacer(1, 0.4 * cm))
+
+    par_statut = stats.get("par_statut") or {}
+    if par_statut:
+        _tableau_titre("Répartition par statut")
+        _tableau_simple(
+            [
+                [LIBELLES_STATUT.get(statut, statut), str(count)]
+                for statut, count in par_statut.items()
+            ],
+            ["Statut", "Nombre"],
+        )
+
+    delais = stats.get("delais_moyens_jours") or {}
+    if delais:
+        _tableau_titre("Délai moyen de traitement (jours)")
+        _tableau_simple(
+            [[service, f"{jours} j"] for service, jours in delais.items()],
+            ["Service", "Délai moyen"],
+        )
+
+    doc.build(elements)
+    return chemin_sortie
+
+
 def generer_rapport_recherche_temporaire(
     resultats: list[dict],
     filtres: dict,

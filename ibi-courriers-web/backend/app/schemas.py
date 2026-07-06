@@ -169,6 +169,33 @@ class TestEmailRequest(BaseModel):
     email: EmailStr
 
 
+class NotificationResponse(BaseModel):
+    id: int
+    type: str
+    titre: str
+    message: str
+    courrier_id: int | None
+    lu: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UnreadCountResponse(BaseModel):
+    count: int
+
+
+class MigrationStatusResponse(BaseModel):
+    pret: bool
+    fichier: str | None = None
+    taille_octets: int = 0
+
+
+class MigrationRunRequest(BaseModel):
+    entite_defaut: str = "IBI"
+    dry_run: bool = False
+
+
 class UserCreateRequest(BaseModel):
     nom: str
     prenom: str

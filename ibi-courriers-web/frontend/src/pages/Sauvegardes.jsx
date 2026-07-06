@@ -14,13 +14,17 @@ export default function Sauvegardes() {
   const [testEmail, setTestEmail] = useState(user?.email || "");
   const [restoreFile, setRestoreFile] = useState("");
   const [restoreConfirm, setRestoreConfirm] = useState("");
+  const [migration, setMigration] = useState(null);
+  const [migrationFile, setMigrationFile] = useState(null);
+  const [migrationRunning, setMigrationRunning] = useState(false);
 
   const charger = () => {
     setLoading(true);
-    Promise.all([api.listBackups(), api.smtpStatus()])
-      .then(([b, s]) => {
+    Promise.all([api.listBackups(), api.smtpStatus(), api.migrationStatus()])
+      .then(([b, s, m]) => {
         setBackups(b);
         setSmtp(s);
+        setMigration(m);
       })
       .catch((e) => toast(e.message, "error"))
       .finally(() => setLoading(false));
@@ -66,6 +70,37 @@ export default function Sauvegardes() {
     }
   };
 
+  const envoyerMigration = async () => {
+    if (!migrationFile) {
+      toast("Sélectionnez le fichier courriers.db.", "error");
+      return;
+    }
+    try {
+      const res = await api.uploadMigrationDb(migrationFile);
+      toast(res.message, "success");
+      setMigrationFile(null);
+      charger();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+
+  const lancerMigration = async (dryRun) => {
+    setMigrationRunning(true);
+    try {
+      const res = await api.runMigration("IBI", dryRun);
+      const stats = res.stats
+        ? ` — ${res.stats.courriers} courriers, ${res.stats.utilisateurs} utilisateurs`
+        : "";
+      toast(`${res.message}${stats}`, "success");
+      if (!dryRun) charger();
+    } catch (e) {
+      toast(e.message, "error");
+    } finally {
+      setMigrationRunning(false);
+    }
+  };
+
   const fichiersDb = backups.filter((b) => b.type === "database");
 
   return (
@@ -79,6 +114,60 @@ export default function Sauvegardes() {
         >
           {creating ? "Sauvegarde…" : "Nouvelle sauvegarde"}
         </button>
+      </div>
+
+      <div className="panel">
+        <h3 className="panel__title">Migration desktop (SQLite)</h3>
+        <p className="panel__hint">
+          Importez la base <code>courriers.db</code> de l&apos;application bureau
+          vers PostgreSQL. Les doublons (même e-mail ou n° courrier) sont ignorés.
+        </p>
+        {migration?.pret ? (
+          <p className="text-secondary" style={{ marginBottom: "1rem" }}>
+            Fichier prêt : <strong>{migration.fichier}</strong> (
+            {formatTaille(migration.taille_octets)})
+          </p>
+        ) : (
+          <p className="text-muted" style={{ marginBottom: "1rem" }}>
+            Aucun fichier courriers.db sur le serveur.
+          </p>
+        )}
+        <div className="form-grid" style={{ maxWidth: 520 }}>
+          <div className="form-group">
+            <label>Fichier courriers.db</label>
+            <input
+              type="file"
+              accept=".db"
+              onChange={(e) => setMigrationFile(e.target.files?.[0] || null)}
+            />
+          </div>
+          <div className="actions-row">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={envoyerMigration}
+              disabled={!migrationFile}
+            >
+              Envoyer sur le serveur
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => lancerMigration(true)}
+              disabled={!migration?.pret || migrationRunning}
+            >
+              Simuler
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => lancerMigration(false)}
+              disabled={!migration?.pret || migrationRunning}
+            >
+              {migrationRunning ? "Migration…" : "Lancer la migration"}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="panel">
@@ -112,8 +201,7 @@ export default function Sauvegardes() {
         </div>
         {!smtp?.enabled && (
           <p className="text-muted" style={{ marginTop: "0.75rem" }}>
-            Activez SMTP_ENABLED dans le fichier .env du serveur pour les
-            notifications automatiques.
+            SMTP en pause — activez SMTP_ENABLED dans le .env du serveur si besoin.
           </p>
         )}
       </div>

@@ -127,6 +127,26 @@ class StatutLog(Base):
     utilisateur: Mapped["User | None"] = relationship()
 
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    titre: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    courrier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("courriers.id"), nullable=True
+    )
+    lu: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    utilisateur: Mapped["User"] = relationship()
+    courrier: Mapped["Courrier | None"] = relationship()
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 

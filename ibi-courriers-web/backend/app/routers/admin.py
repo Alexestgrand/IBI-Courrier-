@@ -1,6 +1,6 @@
 """Routes administration (sauvegardes, paramètres)."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,8 @@ from app.email_service import envoyer_email_test
 from app.models import User
 from app.schemas import (
     BackupItem,
+    MigrationRunRequest,
+    MigrationStatusResponse,
     RestoreBackupRequest,
     SmtpStatusResponse,
     TestEmailRequest,
@@ -21,6 +23,11 @@ from app.services_backup import (
     creer_sauvegarde,
     lister_sauvegardes,
     restaurer_sauvegarde,
+)
+from app.services_migration import (
+    enregistrer_fichier_sqlite,
+    executer_migration,
+    statut_migration,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -97,5 +104,65 @@ def post_restore_backup(
     try:
         restaurer_sauvegarde(db, admin.id, data.nom_fichier)
         return {"message": "Base de données restaurée. Rechargez l'application."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/migration", response_model=MigrationStatusResponse)
+def get_migration_status(_: User = Depends(exiger_admin)) -> dict:
+    return statut_migration()
+
+
+@router.post("/migration/upload")
+async def post_migration_upload(
+    fichier: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(exiger_admin),
+) -> dict[str, str]:
+    if not fichier.filename or not fichier.filename.endswith(".db"):
+        raise HTTPException(
+            status_code=400,
+            detail="Envoyez un fichier courriers.db (SQLite).",
+        )
+    contenu = await fichier.read()
+    if len(contenu) < 1024:
+        raise HTTPException(status_code=400, detail="Fichier trop petit ou vide.")
+    chemin = enregistrer_fichier_sqlite(contenu)
+    enregistrer_audit(
+        db,
+        admin.id,
+        "migration_upload",
+        chemin.name,
+        "migration",
+    )
+    db.commit()
+    return {"message": f"Fichier {chemin.name} enregistré ({len(contenu)} octets)."}
+
+
+@router.post("/migration/run")
+def post_migration_run(
+    data: MigrationRunRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(exiger_admin),
+) -> dict:
+    try:
+        stats = executer_migration(
+            db,
+            entite_defaut=data.entite_defaut,
+            dry_run=data.dry_run,
+        )
+        if not data.dry_run:
+            enregistrer_audit(
+                db,
+                admin.id,
+                "migration_executee",
+                str(stats),
+                "migration",
+            )
+            db.commit()
+        return {
+            "message": "Simulation terminée." if data.dry_run else "Migration terminée.",
+            "stats": stats,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

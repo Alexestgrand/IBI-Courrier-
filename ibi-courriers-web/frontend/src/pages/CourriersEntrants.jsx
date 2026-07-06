@@ -27,6 +27,7 @@ export default function CourriersEntrants() {
   const [entiteId, setEntiteId] = useState("");
   const [recherche, setRecherche] = useState("");
   const [monService, setMonService] = useState(false);
+  const [monServiceInit, setMonServiceInit] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +36,13 @@ export default function CourriersEntrants() {
   useEffect(() => {
     api.entites().then(setEntites);
   }, []);
+
+  useEffect(() => {
+    if (!monServiceInit && aUnService) {
+      setMonService(true);
+      setMonServiceInit(true);
+    }
+  }, [aUnService, monServiceInit]);
 
   useEffect(() => {
     setPage(1);

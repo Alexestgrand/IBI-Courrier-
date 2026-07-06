@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 
-from app.auth import obtenir_utilisateur_courant
+from app.auth import exiger_dg_ou_admin, obtenir_utilisateur_courant
 from app.database import get_db
 from app.models import Courrier, PieceJointe, User
 from app.schemas import (
@@ -25,6 +25,7 @@ from app.services import (
     courrier_vers_detail,
     creer_courrier_entrant,
     creer_courrier_sortant,
+    lister_a_valider,
     lister_courriers,
     lister_entites,
     lister_services,
@@ -58,6 +59,16 @@ def get_stats(
     _: User = Depends(obtenir_utilisateur_courant),
 ):
     return stats_dashboard(db)
+
+
+@router.get("/courriers/a-valider", response_model=PaginatedCourriersResponse)
+def get_courriers_a_valider(
+    page: int = 1,
+    page_size: int = 25,
+    db: Session = Depends(get_db),
+    _: User = Depends(exiger_dg_ou_admin),
+):
+    return lister_a_valider(db, page, page_size)
 
 
 @router.get("/courriers/sortants", response_model=PaginatedCourriersResponse)

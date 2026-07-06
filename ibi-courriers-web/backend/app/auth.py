@@ -72,3 +72,12 @@ def exiger_admin(user: User = Depends(obtenir_utilisateur_courant)) -> User:
             detail="Accès réservé aux administrateurs.",
         )
     return user
+
+
+def exiger_dg_ou_admin(user: User = Depends(obtenir_utilisateur_courant)) -> User:
+    if user.role not in ("dg", "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé à la direction générale.",
+        )
+    return user

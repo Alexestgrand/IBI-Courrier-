@@ -32,9 +32,11 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       NOTIFY_EMAILS: ${NOTIFY_EMAILS:-}
       BACKUP_DIR: /data/backups
+      MIGRATION_DIR: /data/migration
     volumes:
       - uploads:/data/uploads
       - backups:/data/backups
+      - migration:/data/migration
     depends_on:
       db:
         condition: service_healthy
@@ -51,3 +53,4 @@ volumes:
   pgdata:
   uploads:
   backups:
+  migration:

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import NotificationBell from "./NotificationBell";
 
 const ICONS = {
   dashboard: (
@@ -26,6 +27,20 @@ const ICONS = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  ),
+  valider: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+    </svg>
+  ),
+  rapports: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
     </svg>
   ),
   users: (
@@ -67,12 +82,17 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const initiales = `${user?.prenom?.[0] || ""}${user?.nom?.[0] || ""}`.toUpperCase();
   const isAdmin = user?.role === "admin";
+  const isDg = user?.role === "dg" || isAdmin;
 
   const nav = [
     { to: "/", end: true, label: "Tableau de bord", icon: ICONS.dashboard },
+    ...(isDg
+      ? [{ to: "/dg/a-valider", label: "À valider", icon: ICONS.valider }]
+      : []),
     { to: "/courriers/entrants", label: "Entrants", icon: ICONS.entrants },
     { to: "/courriers/sortants", label: "Sortants", icon: ICONS.sortants },
     { to: "/recherche", label: "Recherche", icon: ICONS.recherche },
+    ...(isDg ? [{ to: "/rapports", label: "Rapports", icon: ICONS.rapports }] : []),
     ...(isAdmin
       ? [
           { to: "/admin/utilisateurs", label: "Utilisateurs", icon: ICONS.users },
@@ -124,6 +144,7 @@ export default function Layout() {
 
       <div className="app-main">
         <header className="topbar">
+          <NotificationBell />
           <div className="topbar__user">
             <div>
               <div className="topbar__name">
