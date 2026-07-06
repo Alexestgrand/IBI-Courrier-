@@ -4,17 +4,43 @@ const ROLE_SERVICE = {
   achat: "DAF",
 };
 
+export const LIBELLES_ROLE = {
+  admin: "Administrateur",
+  dg: "Direction générale",
+  reception: "Réception",
+  comptabilite: "Comptabilité",
+  marche: "Service Marché",
+  achat: "DAF",
+};
+
+export const FILTRES_STATUT = [
+  { label: "Tous", value: "" },
+  { label: "En attente", value: "en_attente" },
+  { label: "Transmis", value: "transmis" },
+  { label: "Validé", value: "valide" },
+  { label: "Rejeté", value: "rejete" },
+  { label: "Archivé", value: "archive" },
+];
+
+export const URGENCES = [
+  { label: "Normal", value: "normal" },
+  { label: "Urgent", value: "urgent" },
+  { label: "Très urgent", value: "très urgent" },
+];
+
 export function servicePourRole(role) {
   return ROLE_SERVICE[role] || null;
 }
 
-const LIBELLES = {
+export const LIBELLES_STATUT = {
   en_attente: "En attente",
   transmis: "Transmis",
   valide: "Validé",
   rejete: "Rejeté",
   archive: "Archivé",
 };
+
+const LIBELLES = LIBELLES_STATUT;
 
 export function BadgeStatut({ statut }) {
   const cls = `badge badge-${statut?.replace(" ", "\\ ")}`;

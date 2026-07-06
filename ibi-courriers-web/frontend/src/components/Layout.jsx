@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 import InstallPrompt from "./InstallPrompt";
 import OfflineBanner from "./OfflineBanner";
+import { LIBELLES_ROLE } from "../utils";
 
 const ICONS = {
   dashboard: (
@@ -122,6 +123,7 @@ export default function Layout() {
               key={to}
               to={to}
               end={end}
+              aria-label={label}
               className={({ isActive }) =>
                 isActive ? "sidebar__link active" : "sidebar__link"
               }
@@ -137,6 +139,7 @@ export default function Layout() {
             className="sidebar__link sidebar__logout"
             onClick={logout}
             type="button"
+            aria-label="Déconnexion"
           >
             <span className="sidebar__icon-wrap">{ICONS.logout}</span>
             <span>Déconnexion</span>
@@ -154,7 +157,9 @@ export default function Layout() {
               <div className="topbar__name">
                 {user?.prenom} {user?.nom}
               </div>
-              <div className="topbar__role">{user?.role}</div>
+              <div className="topbar__role">
+                {LIBELLES_ROLE[user?.role] || user?.role}
+              </div>
             </div>
             <div className="topbar__avatar">{initiales || "?"}</div>
           </div>

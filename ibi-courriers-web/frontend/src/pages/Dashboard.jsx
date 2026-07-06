@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import AlerteErreur from "../components/AlerteErreur";
 import { BadgeStatut, formatDate } from "../utils";
 
 function TableCourriers({ courriers, colonnes = "standard" }) {
@@ -12,12 +13,12 @@ function TableCourriers({ courriers, colonnes = "standard" }) {
       <table>
         <thead>
           <tr>
-            <th>N°</th>
-            <th>Type</th>
-            {colonnes === "urgent" && <th>Urgence</th>}
-            <th>Objet</th>
-            <th>Statut</th>
-            <th>Date</th>
+            <th scope="col">N°</th>
+            <th scope="col">Type</th>
+            {colonnes === "urgent" && <th scope="col">Urgence</th>}
+            <th scope="col">Objet</th>
+            <th scope="col">Statut</th>
+            <th scope="col">Date</th>
           </tr>
         </thead>
         <tbody>
@@ -43,12 +44,36 @@ function TableCourriers({ courriers, colonnes = "standard" }) {
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState("");
 
-  useEffect(() => {
-    api.stats().then(setStats).catch(console.error);
+  const charger = useCallback(() => {
+    setLoading(true);
+    setErreur("");
+    api
+      .stats()
+      .then(setStats)
+      .catch((err) => {
+        setStats(null);
+        setErreur(err.message || "Impossible de charger le tableau de bord.");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (!stats) return <p className="loading-text">Chargement…</p>;
+  useEffect(() => {
+    charger();
+  }, [charger]);
+
+  if (loading) return <p className="loading-text">Chargement…</p>;
+  if (erreur) {
+    return (
+      <div>
+        <h2 className="page-title">Tableau de bord</h2>
+        <AlerteErreur message={erreur} onRetry={charger} />
+      </div>
+    );
+  }
+  if (!stats) return null;
 
   const statItems = [
     { value: stats.total_courriers, label: "Total courriers" },
@@ -110,8 +135,8 @@ export default function Dashboard() {
               <table>
                 <thead>
                   <tr>
-                    <th>Service</th>
-                    <th>Nombre</th>
+                    <th scope="col">Service</th>
+                    <th scope="col">Nombre</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -137,12 +162,12 @@ export default function Dashboard() {
             <table>
               <thead>
                 <tr>
-                  <th>Filiale</th>
-                  <th>Nombre</th>
+                  <th scope="col">Filiale</th>
+                  <th scope="col">Nombre</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(stats.par_entite).map(([nom, count]) => (
+                {Object.entries(stats.par_entite || {}).map(([nom, count]) => (
                   <tr key={nom}>
                     <td>{nom}</td>
                     <td>

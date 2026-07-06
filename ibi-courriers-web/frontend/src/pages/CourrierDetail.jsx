@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, downloadPdf, downloadPiece, previewPiece, printPdf, printPiece } from "../api/client";
+import AlerteErreur from "../components/AlerteErreur";
 import { useToast } from "../context/ToastContext";
-import { BadgeStatut, formatDate, formatTaille } from "../utils";
-
-const LIBELLES_STATUT = {
-  en_attente: "En attente",
-  transmis: "Transmis",
-  valide: "Validé",
-  rejete: "Rejeté",
-  archive: "Archivé",
-};
+import { BadgeStatut, formatDate, formatTaille, LIBELLES_STATUT } from "../utils";
 
 const MODIFIABLE = ["en_attente", "transmis"];
+
+const CONFIRMATION_STATUT = {
+  rejete: "Confirmer le rejet de ce courrier ? Cette action est difficilement réversible.",
+  archive: "Archiver ce courrier ?",
+};
 
 export default function CourrierDetail() {
   const { id } = useParams();
@@ -24,25 +22,35 @@ export default function CourrierDetail() {
   const [loading, setLoading] = useState(false);
   const [edition, setEdition] = useState(false);
   const [form, setForm] = useState({});
+  const [chargeLoading, setChargeLoading] = useState(true);
+  const [chargeErreur, setChargeErreur] = useState("");
 
   const charger = () => {
-    Promise.all([api.courrier(id), api.historique(id)]).then(([c, h]) => {
-      setCourrier(c);
-      setHistorique(h);
-      setForm({
-        expediteur: c.expediteur || "",
-        objet: c.objet || "",
-        service_destinataire: c.service_destinataire || "",
-        date_reception: c.date_reception || "",
-        reference_document: c.reference_document || "",
-        urgence: c.urgence || "normal",
-        observations: c.observations || "",
-        destinataire: c.destinataire || "",
-        adresse_destinataire: c.adresse_destinataire || "",
-        service_emetteur: c.service_emetteur || "",
-        corps_courrier: c.corps_courrier || "",
-      });
-    });
+    setChargeLoading(true);
+    setChargeErreur("");
+    Promise.all([api.courrier(id), api.historique(id)])
+      .then(([c, h]) => {
+        setCourrier(c);
+        setHistorique(h);
+        setForm({
+          expediteur: c.expediteur || "",
+          objet: c.objet || "",
+          service_destinataire: c.service_destinataire || "",
+          date_reception: c.date_reception || "",
+          reference_document: c.reference_document || "",
+          urgence: c.urgence || "normal",
+          observations: c.observations || "",
+          destinataire: c.destinataire || "",
+          adresse_destinataire: c.adresse_destinataire || "",
+          service_emetteur: c.service_emetteur || "",
+          corps_courrier: c.corps_courrier || "",
+        });
+      })
+      .catch((err) => {
+        setCourrier(null);
+        setChargeErreur(err.message || "Impossible de charger le courrier.");
+      })
+      .finally(() => setChargeLoading(false));
   };
 
   useEffect(() => {
@@ -50,6 +58,9 @@ export default function CourrierDetail() {
   }, [id]);
 
   const changerStatut = async (nouveau_statut) => {
+    const message = CONFIRMATION_STATUT[nouveau_statut];
+    if (message && !confirm(message)) return;
+
     setErreur("");
     setLoading(true);
     try {
@@ -96,7 +107,18 @@ export default function CourrierDetail() {
     }
   };
 
-  if (!courrier) return <p className="loading-text">Chargement…</p>;
+  if (chargeLoading) return <p className="loading-text">Chargement…</p>;
+  if (chargeErreur) {
+    return (
+      <div>
+        <AlerteErreur message={chargeErreur} onRetry={charger} />
+        <Link to="/courriers/entrants" className="page-back">
+          ← Retour à la liste
+        </Link>
+      </div>
+    );
+  }
+  if (!courrier) return null;
 
   const listeRetour =
     courrier.type === "sortant" ? "/courriers/sortants" : "/courriers/entrants";
@@ -326,8 +348,10 @@ export default function CourrierDetail() {
             {courrier.statuts_possibles.map((s) => (
               <button
                 key={s}
+                type="button"
                 className={`btn ${s === "rejete" ? "btn-danger" : "btn-primary"}`}
                 disabled={loading}
+                aria-label={`Passer au statut ${LIBELLES_STATUT[s] || s}`}
                 onClick={() => changerStatut(s)}
               >
                 → {LIBELLES_STATUT[s] || s}

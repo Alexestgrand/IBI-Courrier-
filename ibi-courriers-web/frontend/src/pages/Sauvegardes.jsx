@@ -61,6 +61,17 @@ export default function Sauvegardes() {
       toast("Sélectionnez un fichier de sauvegarde base.", "error");
       return;
     }
+    if (restoreConfirm !== "RESTAURER") {
+      toast('Saisissez « RESTAURER » pour confirmer.', "error");
+      return;
+    }
+    if (
+      !confirm(
+        "ATTENTION : cette opération remplace toutes les données actuelles de la base. Continuer ?"
+      )
+    ) {
+      return;
+    }
     try {
       const res = await api.restoreBackup(restoreFile, restoreConfirm);
       toast(res.message, "success");

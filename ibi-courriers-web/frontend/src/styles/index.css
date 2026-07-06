@@ -620,6 +620,24 @@ tbody tr:last-child td {
   border-radius: var(--radius);
 }
 
+.alerte-erreur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(248, 113, 113, 0.08);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: var(--error);
+}
+
+.alerte-erreur p {
+  margin: 0;
+}
+
 /* ─── Dropzone ─── */
 .dropzone {
   border: 1px dashed var(--border-strong);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import AlerteErreur from "../components/AlerteErreur";
 import { useToast } from "../context/ToastContext";
 import { formatDate } from "../utils";
 
@@ -38,10 +39,24 @@ export default function Utilisateurs() {
   const [editId, setEditId] = useState(null);
   const [erreur, setErreur] = useState("");
   const [message, setMessage] = useState("");
+  const [loadingListe, setLoadingListe] = useState(true);
+  const [erreurListe, setErreurListe] = useState("");
 
   const charger = () => {
-    api.utilisateurs({ recherche: recherche || undefined, role: roleFiltre || undefined }).then(setUsers);
-    api.audit({ limite: 20 }).then(setAudit);
+    setLoadingListe(true);
+    setErreurListe("");
+    Promise.all([
+      api.utilisateurs({ recherche: recherche || undefined, role: roleFiltre || undefined }),
+      api.audit({ limite: 20 }),
+    ])
+      .then(([u, a]) => {
+        setUsers(u);
+        setAudit(a);
+      })
+      .catch((err) => {
+        setErreurListe(err.message || "Impossible de charger les utilisateurs.");
+      })
+      .finally(() => setLoadingListe(false));
   };
 
   useEffect(() => {
@@ -214,7 +229,14 @@ export default function Utilisateurs() {
         </div>
       </form>
 
+      <AlerteErreur message={erreurListe} onRetry={charger} />
+
       <div className="panel table-wrap">
+        {loadingListe ? (
+          <p className="loading-text">Chargement…</p>
+        ) : erreurListe ? null : users.length === 0 ? (
+          <p className="empty-state">Aucun utilisateur trouvé.</p>
+        ) : (
         <table>
           <thead>
             <tr>
@@ -253,6 +275,7 @@ export default function Utilisateurs() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
 
       <div className="panel">

@@ -2,13 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import { formatTaille } from "../utils";
-
-const URGENCES = [
-  { label: "Normal", value: "normal" },
-  { label: "Urgent", value: "urgent" },
-  { label: "Très urgent", value: "très urgent" },
-];
+import { formatTaille, URGENCES } from "../utils";
 
 export default function NouveauCourrier() {
   const navigate = useNavigate();
@@ -21,6 +15,7 @@ export default function NouveauCourrier() {
   const [loading, setLoading] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [refErreur, setRefErreur] = useState("");
 
   const [form, setForm] = useState({
     entite_id: "",
@@ -34,11 +29,15 @@ export default function NouveauCourrier() {
   });
 
   useEffect(() => {
-    Promise.all([api.entites(), api.services()]).then(([e, s]) => {
-      setEntites(e);
-      setServices(s);
-      if (e.length) setForm((f) => ({ ...f, entite_id: String(e[0].id) }));
-    });
+    Promise.all([api.entites(), api.services()])
+      .then(([e, s]) => {
+        setEntites(e);
+        setServices(s);
+        if (e.length) setForm((f) => ({ ...f, entite_id: String(e[0].id) }));
+      })
+      .catch((err) => {
+        setRefErreur(err.message || "Impossible de charger les listes déroulantes.");
+      });
   }, []);
 
   const ajouterFichiers = (fileList) => {
@@ -104,6 +103,8 @@ export default function NouveauCourrier() {
   return (
     <div>
       <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Nouveau courrier entrant</h2>
+
+      {refErreur && <p className="error-msg">{refErreur}</p>}
 
       <form className="panel form-max" onSubmit={handleSubmit}>
         <div className="form-row">

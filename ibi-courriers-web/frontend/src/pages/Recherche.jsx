@@ -2,16 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, exportRechercheCsv, exportRecherchePdf } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import { BadgeStatut, formatDate } from "../utils";
-
-const FILTRES_STATUT = [
-  { label: "Tous", value: "" },
-  { label: "En attente", value: "en_attente" },
-  { label: "Transmis", value: "transmis" },
-  { label: "Validé", value: "valide" },
-  { label: "Rejeté", value: "rejete" },
-  { label: "Archivé", value: "archive" },
-];
+import { BadgeStatut, FILTRES_STATUT, formatDate } from "../utils";
 
 const TYPES = [
   { label: "Tous", value: "" },
@@ -47,10 +38,14 @@ export default function Recherche() {
   });
 
   useEffect(() => {
-    Promise.all([api.entites(), api.services()]).then(([e, s]) => {
-      setEntites(e);
-      setServices(s);
-    });
+    Promise.all([api.entites(), api.services()])
+      .then(([e, s]) => {
+        setEntites(e);
+        setServices(s);
+      })
+      .catch((err) => {
+        setErreur(err.message || "Impossible de charger les référentiels.");
+      });
   }, []);
 
   const preparerParams = () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import AlerteErreur from "../components/AlerteErreur";
 import Pagination from "../components/Pagination";
 import { BadgeStatut, formatDate } from "../utils";
 
@@ -13,16 +14,45 @@ export default function AValider() {
   const [meta, setMeta] = useState({ page: 1, pages: 1, total: 0 });
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [erreur, setErreur] = useState("");
 
-  useEffect(() => {
+  const charger = () => {
     setLoading(true);
-    api
+    setErreur("");
+    return api
       .courriersAValider({ page, page_size: PAGE_SIZE })
       .then((data) => {
         setCourriers(data.items);
         setMeta({ page: data.page, pages: data.pages, total: data.total });
       })
+      .catch((err) => {
+        setErreur(err.message || "Impossible de charger la file à valider.");
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setErreur("");
+    api
+      .courriersAValider({ page, page_size: PAGE_SIZE })
+      .then((data) => {
+        if (cancelled) return;
+        setCourriers(data.items);
+        setMeta({ page: data.page, pages: data.pages, total: data.total });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setErreur(err.message || "Impossible de charger la file à valider.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [page]);
 
   return (
@@ -34,30 +64,32 @@ export default function AValider() {
         </p>
       </div>
 
-      {meta.total > 0 && (
+      {meta.total > 0 && !erreur && (
         <div className="panel panel--alert" style={{ marginBottom: "1rem" }}>
           <strong>{meta.total}</strong> courrier{meta.total > 1 ? "s" : ""} en attente
           de validation
         </div>
       )}
 
+      <AlerteErreur message={erreur} onRetry={charger} />
+
       <div className="panel table-wrap">
         {loading ? (
           <p className="loading-text">Chargement…</p>
-        ) : courriers.length === 0 ? (
+        ) : erreur ? null : courriers.length === 0 ? (
           <p className="empty-state">Aucun courrier à valider.</p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Numéro</th>
-                <th>Filiale</th>
-                <th>Expéditeur</th>
-                <th>Objet</th>
-                <th>Service</th>
-                <th>Urgence</th>
-                <th>Date</th>
-                <th>Statut</th>
+                <th scope="col">Numéro</th>
+                <th scope="col">Filiale</th>
+                <th scope="col">Expéditeur</th>
+                <th scope="col">Objet</th>
+                <th scope="col">Service</th>
+                <th scope="col">Urgence</th>
+                <th scope="col">Date</th>
+                <th scope="col">Statut</th>
               </tr>
             </thead>
             <tbody>
@@ -91,12 +123,14 @@ export default function AValider() {
         )}
       </div>
 
-      <Pagination
-        page={meta.page}
-        pages={meta.pages}
-        total={meta.total}
-        onPageChange={setPage}
-      />
+      {!erreur && (
+        <Pagination
+          page={meta.page}
+          pages={meta.pages}
+          total={meta.total}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

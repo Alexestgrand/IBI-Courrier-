@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-
-const URGENCES = [
-  { label: "Normal", value: "normal" },
-  { label: "Urgent", value: "urgent" },
-  { label: "Très urgent", value: "très urgent" },
-];
+import { URGENCES } from "../utils";
 
 export default function NouveauSortant() {
   const navigate = useNavigate();
@@ -16,6 +11,7 @@ export default function NouveauSortant() {
   const [mode, setMode] = useState("saisie");
   const [pdfScanne, setPdfScanne] = useState(null);
   const [erreur, setErreur] = useState("");
+  const [refErreur, setRefErreur] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -30,11 +26,15 @@ export default function NouveauSortant() {
   });
 
   useEffect(() => {
-    Promise.all([api.entites(), api.services()]).then(([e, s]) => {
-      setEntites(e);
-      setServices(s);
-      if (e.length) setForm((f) => ({ ...f, entite_id: String(e[0].id) }));
-    });
+    Promise.all([api.entites(), api.services()])
+      .then(([e, s]) => {
+        setEntites(e);
+        setServices(s);
+        if (e.length) setForm((f) => ({ ...f, entite_id: String(e[0].id) }));
+      })
+      .catch((err) => {
+        setRefErreur(err.message || "Impossible de charger les listes déroulantes.");
+      });
   }, []);
 
   const handleSubmit = async (e) => {
@@ -63,6 +63,8 @@ export default function NouveauSortant() {
   return (
     <div>
       <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Nouveau courrier sortant</h2>
+
+      {refErreur && <p className="error-msg">{refErreur}</p>}
 
       <form onSubmit={handleSubmit} className="panel form-grid">
         <div className="form-group">
