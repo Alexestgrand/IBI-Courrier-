@@ -20,3 +20,5 @@ wait_for_health() {
   docker compose -f docker-compose.prod.yml logs backend --tail 30 || true
   return 1
 }
+
+wait_for_health "$@"
