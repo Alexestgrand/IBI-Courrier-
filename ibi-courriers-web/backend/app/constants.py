@@ -10,6 +10,12 @@ LIBELLES_STATUT = {
     "archive": "Archivé",
 }
 
+LIBELLES_URGENCE = {
+    "normal": "Normal",
+    "urgent": "Urgent",
+    "très urgent": "Très urgent",
+}
+
 TRANSITIONS_VALIDES = {
     "en_attente": ("transmis",),
     "transmis": ("valide", "rejete"),
