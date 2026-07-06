@@ -26,6 +26,20 @@ async function request(path, options = {}) {
     throw new Error("Session expirée");
   }
 
+  if (response.status === 403) {
+    let detail = "";
+    try {
+      const data = await response.json();
+      detail = typeof data.detail === "string" ? data.detail : "";
+    } catch {
+      /* ignore */
+    }
+    if (detail.includes("changer votre mot de passe")) {
+      window.location.href = "/profil";
+      throw new Error(detail);
+    }
+  }
+
   if (!response.ok) {
     let detail = "Erreur serveur";
     try {
@@ -114,7 +128,7 @@ export const api = {
   modifierUtilisateur: (id, data) =>
     request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
 
-  resetMotDePasse: (id, mot_de_passe = null) =>
+  resetMotDePasse: (id, mot_de_passe) =>
     request(`/users/${id}/reset-password`, {
       method: "POST",
       body: JSON.stringify({ mot_de_passe }),

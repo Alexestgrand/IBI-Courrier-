@@ -65,7 +65,16 @@ def obtenir_utilisateur_courant(
     return user
 
 
-def exiger_admin(user: User = Depends(obtenir_utilisateur_courant)) -> User:
+def exiger_session_complete(user: User = Depends(obtenir_utilisateur_courant)) -> User:
+    if user.must_change_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous devez changer votre mot de passe avant de continuer.",
+        )
+    return user
+
+
+def exiger_admin(user: User = Depends(exiger_session_complete)) -> User:
     if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -74,7 +83,7 @@ def exiger_admin(user: User = Depends(obtenir_utilisateur_courant)) -> User:
     return user
 
 
-def exiger_dg_ou_admin(user: User = Depends(obtenir_utilisateur_courant)) -> User:
+def exiger_dg_ou_admin(user: User = Depends(exiger_session_complete)) -> User:
     if user.role not in ("dg", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

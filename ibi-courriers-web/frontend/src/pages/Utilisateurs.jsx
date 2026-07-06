@@ -21,6 +21,13 @@ const FORM_VIDE = {
   actif: true,
 };
 
+const genererMotDePasse = (longueur = 12) => {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  return Array.from({ length: longueur }, () =>
+    chars.charAt(Math.floor(Math.random() * chars.length))
+  ).join("");
+};
+
 export default function Utilisateurs() {
   const { toast } = useToast();
   const [users, setUsers] = useState([]);
@@ -87,9 +94,24 @@ export default function Utilisateurs() {
 
   const resetMdp = async (id) => {
     if (!confirm("Réinitialiser le mot de passe de cet utilisateur ?")) return;
+    const propose = genererMotDePasse();
+    const saisie = prompt(
+      "Saisissez le nouveau mot de passe (min. 6 caractères).\n" +
+        "Vous pouvez modifier la proposition ci-dessous :",
+      propose
+    );
+    if (!saisie) return;
+    if (saisie.length < 6) {
+      toast("Le mot de passe doit contenir au moins 6 caractères.", "error");
+      return;
+    }
     try {
-      const res = await api.resetMotDePasse(id);
-      toast(`Nouveau mot de passe : ${res.mot_de_passe}`, "info", 8000);
+      await api.resetMotDePasse(id, saisie);
+      toast(
+        "Mot de passe réinitialisé. Communiquez-le à l'utilisateur de manière sécurisée.",
+        "success",
+        8000
+      );
     } catch (err) {
       toast(err.message, "error");
     }

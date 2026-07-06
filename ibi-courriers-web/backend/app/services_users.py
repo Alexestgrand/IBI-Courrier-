@@ -1,8 +1,5 @@
 """Services de gestion des utilisateurs."""
 
-import secrets
-import string
-
 from sqlalchemy.orm import Session
 
 from app.auth import hasher_mot_de_passe
@@ -153,22 +150,17 @@ def mettre_a_jour_utilisateur(
     return user
 
 
-def generer_mot_de_passe_temporaire(longueur: int = 12) -> str:
-    alphabet = string.ascii_letters + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(longueur))
-
-
 def reinitialiser_mot_de_passe(
     db: Session,
     admin: User,
     user_id: int,
-    mot_de_passe: str | None = None,
-) -> str:
+    mot_de_passe: str,
+) -> None:
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise ValueError("Utilisateur introuvable.")
 
-    nouveau = mot_de_passe.strip() if mot_de_passe else generer_mot_de_passe_temporaire()
+    nouveau = mot_de_passe.strip()
     if len(nouveau) < 6:
         raise ValueError("Le mot de passe doit contenir au moins 6 caractères.")
 
@@ -178,4 +170,3 @@ def reinitialiser_mot_de_passe(
         db, admin.id, "reinitialisation_mot_de_passe", f"Utilisateur {user.email}", "users"
     )
     db.commit()
-    return nouveau

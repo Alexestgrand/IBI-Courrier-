@@ -13,6 +13,7 @@ from app.health import verifier_sante
 from app.migrations import appliquer_migrations_schema
 from app.routers import admin, auth, courriers, notifications, ocr, rapports, search, users
 from app.seed import initialiser_donnees
+from app.startup_checks import valider_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ def _executer_alembic() -> None:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    valider_configuration()
     os.makedirs(settings.upload_dir, exist_ok=True)
     os.makedirs(settings.backup_dir, exist_ok=True)
     os.makedirs(settings.migration_dir, exist_ok=True)

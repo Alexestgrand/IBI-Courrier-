@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 
-from app.auth import exiger_dg_ou_admin, obtenir_utilisateur_courant
+from app.auth import exiger_dg_ou_admin, exiger_session_complete
+from app.authorization import obtenir_courrier_autorise, obtenir_piece_jointe_autorisee
 from app.database import get_db
-from app.models import Courrier, PieceJointe, User
+from app.models import Courrier, User
 from app.schemas import (
     ChangementStatutRequest,
     CourrierDetail,
@@ -41,7 +42,7 @@ router = APIRouter(tags=["courriers"])
 @router.get("/entites", response_model=list[EntiteResponse])
 def get_entites(
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    _: User = Depends(exiger_session_complete),
 ):
     return lister_entites(db)
 
@@ -49,7 +50,7 @@ def get_entites(
 @router.get("/services", response_model=list[ServiceResponse])
 def get_services(
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    _: User = Depends(exiger_session_complete),
 ):
     return lister_services(db)
 
@@ -57,9 +58,9 @@ def get_services(
 @router.get("/dashboard/stats", response_model=DashboardStats)
 def get_stats(
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
-    return stats_dashboard(db)
+    return stats_dashboard(db, user)
 
 
 @router.get("/courriers/a-valider", response_model=PaginatedCourriersResponse)
@@ -82,7 +83,7 @@ def get_courriers_sortants(
     page: int = 1,
     page_size: int = 25,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     return lister_courriers(
         db,
@@ -110,7 +111,7 @@ async def post_courrier_sortant(
     corps_courrier: str | None = Form(None),
     pdf_scanne: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     try:
         courrier = await creer_courrier_sortant(
@@ -151,7 +152,7 @@ def get_courriers_entrants(
     page: int = 1,
     page_size: int = 25,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     return lister_courriers(
         db,
@@ -179,7 +180,7 @@ async def post_courrier_entrant(
     observations: str | None = Form(None),
     fichiers: list[UploadFile] = File(default=[]),
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     try:
         courrier = await creer_courrier_entrant(
@@ -214,20 +215,9 @@ async def post_courrier_entrant(
 def get_courrier(
     courrier_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
-    courrier = (
-        db.query(Courrier)
-        .options(
-            joinedload(Courrier.entite),
-            joinedload(Courrier.pieces_jointes),
-            joinedload(Courrier.signataire),
-        )
-        .filter(Courrier.id == courrier_id)
-        .first()
-    )
-    if courrier is None:
-        raise HTTPException(status_code=404, detail="Courrier introuvable.")
+    courrier = obtenir_courrier_autorise(db, courrier_id, user)
     return courrier_vers_detail(courrier, user.role, user)
 
 
@@ -236,7 +226,7 @@ def patch_courrier(
     courrier_id: int,
     data: CourrierUpdateRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     try:
         champs = data.model_dump(exclude_unset=True)
@@ -251,7 +241,7 @@ def patch_statut(
     courrier_id: int,
     data: ChangementStatutRequest,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     try:
         courrier = changer_statut_courrier(
@@ -266,7 +256,7 @@ def patch_statut(
 def post_signer_courrier(
     courrier_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     try:
         courrier = signer_courrier_sortant(db, user, courrier_id)
@@ -289,8 +279,9 @@ def post_signer_courrier(
 def get_historique(
     courrier_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
+    obtenir_courrier_autorise(db, courrier_id, user, avec_relations=False)
     return obtenir_historique(db, courrier_id)
 
 
@@ -298,20 +289,9 @@ def get_historique(
 def download_pdf_courrier(
     courrier_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
-    courrier = (
-        db.query(Courrier)
-        .options(
-            joinedload(Courrier.entite),
-            joinedload(Courrier.pieces_jointes),
-            joinedload(Courrier.signataire),
-        )
-        .filter(Courrier.id == courrier_id)
-        .first()
-    )
-    if courrier is None:
-        raise HTTPException(status_code=404, detail="Courrier introuvable.")
+    courrier = obtenir_courrier_autorise(db, courrier_id, user)
     if courrier.type != "sortant":
         raise HTTPException(status_code=400, detail="PDF disponible uniquement pour les sortants.")
 
@@ -338,10 +318,10 @@ def download_pdf_courrier(
 def view_piece_jointe(
     piece_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
-    pj = db.query(PieceJointe).filter(PieceJointe.id == piece_id).first()
-    if pj is None or not os.path.isfile(pj.chemin_stockage):
+    pj = obtenir_piece_jointe_autorisee(db, piece_id, user)
+    if not os.path.isfile(pj.chemin_stockage):
         raise HTTPException(status_code=404, detail="Fichier introuvable.")
     return FileResponse(
         pj.chemin_stockage,
@@ -355,10 +335,10 @@ def view_piece_jointe(
 def download_piece_jointe(
     piece_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
-    pj = db.query(PieceJointe).filter(PieceJointe.id == piece_id).first()
-    if pj is None or not os.path.isfile(pj.chemin_stockage):
+    pj = obtenir_piece_jointe_autorisee(db, piece_id, user)
+    if not os.path.isfile(pj.chemin_stockage):
         raise HTTPException(status_code=404, detail="Fichier introuvable.")
     return FileResponse(
         pj.chemin_stockage,

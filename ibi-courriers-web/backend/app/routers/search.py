@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.auth import exiger_admin, obtenir_utilisateur_courant
+from app.auth import exiger_admin, exiger_session_complete
 from app.database import get_db
 from app.models import User
 from app.pdf_export import generer_rapport_recherche_temporaire
@@ -18,9 +18,9 @@ from app.services import enregistrer_audit, lister_audit, rechercher_courriers
 router = APIRouter(tags=["recherche"])
 
 
-def _executer_recherche(db: Session, **params):
+def _executer_recherche(db: Session, user: User, **params):
     try:
-        return rechercher_courriers(db, **params)
+        return rechercher_courriers(db, user=user, **params)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -36,10 +36,11 @@ def get_recherche(
     date_debut: str | None = None,
     date_fin: str | None = None,
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     return _executer_recherche(
         db,
+        user,
         mot_cle=mot_cle,
         type_courrier=type_courrier,
         statut=statut,
@@ -62,7 +63,7 @@ def export_recherche_pdf(
     date_debut: str | None = None,
     date_fin: str | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     filtres = {
         "mot_cle": mot_cle,
@@ -76,6 +77,7 @@ def export_recherche_pdf(
     }
     resultats = _executer_recherche(
         db,
+        user,
         mot_cle=mot_cle,
         type_courrier=type_courrier,
         statut=statut,
@@ -116,10 +118,11 @@ def export_recherche_csv(
     date_debut: str | None = None,
     date_fin: str | None = None,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     resultats = _executer_recherche(
         db,
+        user,
         mot_cle=mot_cle,
         type_courrier=type_courrier,
         statut=statut,

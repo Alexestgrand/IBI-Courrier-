@@ -9,9 +9,14 @@ from fastapi import UploadFile
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.authorization import (
+    appliquer_filtre_acces_courrier,
+    service_impose_pour_role,
+    verifier_acces_courrier,
+)
+from app.uploads import valider_contenu_upload
 from app.config import settings
 from app.constants import (
-    EXTENSIONS_AUTORISEES,
     TRANSITIONS_PAR_ROLE,
     TRANSITIONS_VALIDES,
     URGENCES_VALIDES,
@@ -83,15 +88,9 @@ async def sauvegarder_fichiers(
     for fichier in fichiers:
         if not fichier.filename:
             continue
-        _, ext = os.path.splitext(fichier.filename)
-        ext = ext.lower()
-        if ext not in EXTENSIONS_AUTORISEES:
-            raise ValueError(
-                f"Extension non autorisée ({ext}). "
-                f"Formats acceptés : {', '.join(sorted(EXTENSIONS_AUTORISEES))}"
-            )
-
         contenu = await fichier.read()
+        ext = valider_contenu_upload(contenu, fichier.filename)
+
         nom_stockage = f"{courrier.numero}_{uuid.uuid4().hex}{ext}"
         chemin_absolu = os.path.join(settings.upload_dir, nom_stockage)
         with open(chemin_absolu, "wb") as f:
@@ -203,8 +202,12 @@ def lister_courriers(
         query = query.filter(Courrier.entite_id == entite_id)
 
     filtre_service = service
-    if mon_service and not filtre_service and role_utilisateur:
-        filtre_service = service_pour_role(role_utilisateur)
+    if role_utilisateur:
+        service_force = service_impose_pour_role(role_utilisateur)
+        if service_force:
+            filtre_service = service_force
+        elif mon_service and not filtre_service:
+            filtre_service = service_pour_role(role_utilisateur)
     if filtre_service:
         if type_courrier == "entrant":
             query = query.filter(Courrier.service_destinataire == filtre_service)
@@ -449,6 +452,8 @@ def changer_statut_courrier(
     if courrier is None:
         raise ValueError("Courrier introuvable.")
 
+    verifier_acces_courrier(user, courrier)
+
     ancien = courrier.statut
     if not transition_autorisee(user.role, ancien, nouveau_statut):
         raise ValueError(
@@ -513,34 +518,32 @@ def obtenir_historique(db: Session, courrier_id: int) -> list[dict]:
     return resultat
 
 
-def stats_dashboard(db: Session) -> dict:
+def stats_dashboard(db: Session, user: User | None = None) -> dict:
     aujourd_hui = date.today()
 
-    total = db.query(func.count(Courrier.id)).scalar() or 0
-    en_attente = (
-        db.query(func.count(Courrier.id)).filter(Courrier.statut == "en_attente").scalar()
-        or 0
-    )
-    transmis = (
-        db.query(func.count(Courrier.id)).filter(Courrier.statut == "transmis").scalar()
-        or 0
-    )
-    valides = (
-        db.query(func.count(Courrier.id)).filter(Courrier.statut == "valide").scalar() or 0
-    )
+    def q_courriers():
+        query = db.query(Courrier)
+        if user:
+            query = appliquer_filtre_acces_courrier(query, user)
+        return query
+
+    total = q_courriers().count()
+    en_attente = q_courriers().filter(Courrier.statut == "en_attente").count()
+    transmis = q_courriers().filter(Courrier.statut == "transmis").count()
+    valides = q_courriers().filter(Courrier.statut == "valide").count()
     urgents = (
-        db.query(func.count(Courrier.id))
+        q_courriers()
         .filter(
             Courrier.urgence.in_(("urgent", "très urgent")),
             Courrier.statut.in_(("en_attente", "transmis")),
         )
-        .scalar()
-        or 0
+        .count()
     )
 
     par_entite_rows = (
-        db.query(Entite.nom, func.count(Courrier.id))
-        .outerjoin(Courrier, Courrier.entite_id == Entite.id)
+        q_courriers()
+        .join(Entite, Courrier.entite_id == Entite.id)
+        .with_entities(Entite.nom, func.count(Courrier.id))
         .group_by(Entite.id, Entite.nom)
         .all()
     )
@@ -548,9 +551,15 @@ def stats_dashboard(db: Session) -> dict:
 
     mois_actuel = datetime.now(timezone.utc).strftime("%Y-%m")
     par_service: dict[str, int] = {}
-    for service in db.query(Service).filter(Service.actif.is_(True)).all():
+    service_user = service_impose_pour_role(user.role) if user else None
+    services_cibles = (
+        db.query(Service).filter(Service.actif.is_(True), Service.nom == service_user).all()
+        if service_user
+        else db.query(Service).filter(Service.actif.is_(True)).all()
+    )
+    for service in services_cibles:
         count = (
-            db.query(func.count(Courrier.id))
+            q_courriers()
             .filter(
                 or_(
                     Courrier.service_destinataire == service.nom,
@@ -562,15 +571,14 @@ def stats_dashboard(db: Session) -> dict:
                 )
                 == mois_actuel,
             )
-            .scalar()
-            or 0
+            .count()
         )
         if count > 0:
             par_service[service.nom] = count
     par_service = dict(sorted(par_service.items(), key=lambda x: x[1], reverse=True))
 
     urgents_rows = (
-        db.query(Courrier)
+        q_courriers()
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
         .filter(
             Courrier.urgence.in_(("urgent", "très urgent")),
@@ -582,7 +590,7 @@ def stats_dashboard(db: Session) -> dict:
     )
 
     recents_rows = (
-        db.query(Courrier)
+        q_courriers()
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
         .order_by(Courrier.created_at.desc())
         .limit(10)
@@ -590,7 +598,7 @@ def stats_dashboard(db: Session) -> dict:
     )
 
     recus_aujourdhui = (
-        db.query(Courrier)
+        q_courriers()
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
         .filter(func.date(Courrier.created_at) == aujourd_hui)
         .order_by(Courrier.created_at.desc())
@@ -611,7 +619,7 @@ def stats_dashboard(db: Session) -> dict:
     traites_aujourdhui = []
     if ids_traites_list:
         traites_aujourdhui = (
-            db.query(Courrier)
+            q_courriers()
             .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
             .filter(Courrier.id.in_(ids_traites_list))
             .order_by(Courrier.updated_at.desc())
@@ -696,9 +704,8 @@ async def creer_courrier_sortant(
 
     mode_import = pdf_scanne is not None and pdf_scanne.filename
     if mode_import:
-        _, ext = os.path.splitext(pdf_scanne.filename or "")
-        if ext.lower() != ".pdf":
-            raise ValueError("Le fichier importé doit être un PDF.")
+        contenu = await pdf_scanne.read()
+        valider_contenu_upload(contenu, pdf_scanne.filename or "import.pdf")
         corps_final = "(Courrier importé - PDF scanné)"
     else:
         if not corps_courrier or not corps_courrier.strip():
@@ -739,7 +746,6 @@ async def creer_courrier_sortant(
     chemin_pdf = os.path.join(exports_dir, f"{numero}.pdf")
 
     if mode_import:
-        contenu = await pdf_scanne.read()
         with open(chemin_pdf, "wb") as f:
             f.write(contenu)
     else:
@@ -777,6 +783,8 @@ def modifier_courrier(
     )
     if courrier is None:
         raise ValueError("Courrier introuvable.")
+
+    verifier_acces_courrier(user, courrier)
 
     if courrier.statut not in ("en_attente", "transmis"):
         raise ValueError("Seuls les courriers en attente ou transmis peuvent être modifiés.")
@@ -823,6 +831,7 @@ def modifier_courrier(
 
 def rechercher_courriers(
     db: Session,
+    user: User | None = None,
     mot_cle: str | None = None,
     type_courrier: str | None = None,
     statut: str | None = None,
@@ -836,6 +845,8 @@ def rechercher_courriers(
         db.query(Courrier)
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
     )
+    if user:
+        query = appliquer_filtre_acces_courrier(query, user)
 
     if type_courrier:
         query = query.filter(Courrier.type == type_courrier)
@@ -950,6 +961,7 @@ def signer_courrier_sortant(db: Session, user: User, courrier_id: int) -> Courri
     )
     if courrier is None:
         raise ValueError("Courrier introuvable.")
+    verifier_acces_courrier(user, courrier)
     if courrier.type != "sortant":
         raise ValueError("La signature s'applique aux courriers sortants.")
     if courrier.statut not in ("valide", "archive"):

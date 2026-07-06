@@ -12,6 +12,7 @@ from app.auth import (
     obtenir_utilisateur_courant,
     verifier_mot_de_passe,
 )
+from app.uploads import valider_contenu_png
 from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, TokenResponse, UserResponse, ChangePasswordRequest
@@ -113,8 +114,10 @@ async def post_signature(
     user: User = Depends(obtenir_utilisateur_courant),
 ) -> dict[str, str]:
     contenu = await fichier.read()
-    if not contenu or len(contenu) < 50:
-        raise HTTPException(status_code=400, detail="Signature vide ou invalide.")
+    try:
+        valider_contenu_png(contenu)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     enregistrer_signature_utilisateur(db, user, contenu)
     enregistrer_audit(db, user.id, "signature_enregistree", user.email, "auth")

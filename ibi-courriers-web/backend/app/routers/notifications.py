@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth import obtenir_utilisateur_courant
+from app.auth import exiger_session_complete
 from app.database import get_db
 from app.models import User
 from app.schemas import NotificationResponse, UnreadCountResponse
@@ -22,7 +22,7 @@ def get_notifications(
     non_lues: bool = False,
     limit: int = 30,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     rows = lister_notifications(db, user.id, non_lues_seulement=non_lues, limit=limit)
     return rows
@@ -31,7 +31,7 @@ def get_notifications(
 @router.get("/unread-count", response_model=UnreadCountResponse)
 def get_unread_count(
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     return {"count": compter_non_lues(db, user.id)}
 
@@ -40,7 +40,7 @@ def get_unread_count(
 def patch_notification_read(
     notification_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     if not marquer_lue(db, user.id, notification_id):
         raise HTTPException(status_code=404, detail="Notification introuvable.")
@@ -51,7 +51,7 @@ def patch_notification_read(
 @router.post("/read-all")
 def post_read_all(
     db: Session = Depends(get_db),
-    user: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(exiger_session_complete),
 ):
     count = marquer_toutes_lues(db, user.id)
     db.commit()

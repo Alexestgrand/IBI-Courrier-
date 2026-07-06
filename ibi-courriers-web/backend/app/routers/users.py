@@ -85,7 +85,12 @@ def post_reset_password(
     admin: User = Depends(exiger_admin),
 ):
     try:
-        mot_de_passe = reinitialiser_mot_de_passe(db, admin, user_id, data.mot_de_passe)
-        return {"mot_de_passe": mot_de_passe}
+        reinitialiser_mot_de_passe(db, admin, user_id, data.mot_de_passe)
+        return {
+            "message": (
+                "Mot de passe réinitialisé. L'utilisateur devra le changer "
+                "à la prochaine connexion."
+            )
+        }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

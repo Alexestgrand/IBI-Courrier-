@@ -233,7 +233,7 @@ class UserUpdateRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    mot_de_passe: str | None = None
+    mot_de_passe: str = Field(min_length=6)
 
 
 class ChangePasswordRequest(BaseModel):
