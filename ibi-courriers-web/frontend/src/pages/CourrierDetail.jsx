@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, downloadPdf, downloadPiece, previewPiece, printPdf, printPiece } from "../api/client";
 import AlerteErreur from "../components/AlerteErreur";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -38,6 +38,7 @@ const ICONS = {
 
 export default function CourrierDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [courrier, setCourrier] = useState(null);
   const [historique, setHistorique] = useState([]);
@@ -49,6 +50,7 @@ export default function CourrierDetail() {
   const [chargeLoading, setChargeLoading] = useState(true);
   const [chargeErreur, setChargeErreur] = useState("");
   const [confirmationStatut, setConfirmationStatut] = useState(null);
+  const [confirmationSuppression, setConfirmationSuppression] = useState(false);
 
   usePageTitle(courrier ? `Courrier ${courrier.numero}` : "Courrier");
 
@@ -140,6 +142,23 @@ export default function CourrierDetail() {
     }
   };
 
+  const supprimerCourrier = async () => {
+    if (!courrier) return;
+    const retour =
+      courrier.type === "sortant" ? "/courriers/sortants" : "/courriers/entrants";
+    setLoading(true);
+    try {
+      await api.supprimerCourrier(id);
+      toast("Courrier supprimé.", "success");
+      navigate(retour);
+    } catch (err) {
+      toast(err.message, "error");
+    } finally {
+      setLoading(false);
+      setConfirmationSuppression(false);
+    }
+  };
+
   if (chargeLoading) return <p className="loading-text">Chargement…</p>;
   if (chargeErreur) {
     return (
@@ -205,8 +224,45 @@ export default function CourrierDetail() {
               Modifier
             </button>
           )}
+          {courrier.peut_supprimer && !edition && (
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={loading || confirmationSuppression}
+              onClick={() => setConfirmationSuppression(true)}
+            >
+              Supprimer
+            </button>
+          )}
         </div>
       </div>
+
+      {confirmationSuppression && (
+        <div className="inline-confirm" style={{ marginBottom: "1rem" }}>
+          <p>
+            Supprimer définitivement le courrier <strong>{courrier.numero}</strong> ?
+            Les pièces jointes seront effacées. Cette action est irréversible.
+          </p>
+          <div className="inline-confirm__actions">
+            <button
+              type="button"
+              className="btn btn-danger btn-sm"
+              onClick={supprimerCourrier}
+              disabled={loading}
+            >
+              Confirmer la suppression
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setConfirmationSuppression(false)}
+              disabled={loading}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <div className="detail-meta">

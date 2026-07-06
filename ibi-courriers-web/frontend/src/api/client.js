@@ -126,6 +126,9 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  supprimerCourrier: (id) =>
+    request(`/courriers/${id}`, { method: "DELETE" }),
+
   changerStatut: (id, nouveau_statut, observation) =>
     request(`/courriers/${id}/statut`, {
       method: "PATCH",

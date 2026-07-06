@@ -11,8 +11,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.authorization import (
     appliquer_filtre_acces_courrier,
+    peut_supprimer_courrier,
     service_impose_pour_role,
     verifier_acces_courrier,
+    verifier_suppression_courrier,
 )
 from app.uploads import valider_contenu_upload
 from app.config import settings
@@ -23,7 +25,7 @@ from app.constants import (
     service_pour_role,
 )
 from app.database import engine
-from app.models import AuditLog, Courrier, Entite, PieceJointe, Service, StatutLog, User
+from app.models import AuditLog, Courrier, Entite, Notification, PieceJointe, Service, StatutLog, User
 
 MAX_RECHERCHE_EXPORT = 5000
 
@@ -179,6 +181,7 @@ def courrier_vers_detail(c: Courrier, role: str, user: User | None = None) -> di
         "signe_par_nom": signe_par_nom,
         "signe_le": c.signe_le,
         "peut_signer": peut_signer,
+        "peut_supprimer": bool(user and peut_supprimer_courrier(user, c)),
         "pieces_jointes": c.pieces_jointes,
         "statuts_possibles": statuts_possibles(role, c.statut),
         "created_at": c.created_at,
@@ -850,6 +853,45 @@ def modifier_courrier(
     db.commit()
     db.refresh(courrier)
     return courrier
+
+
+def _supprimer_fichier_si_existe(chemin: str | None) -> None:
+    if chemin and os.path.isfile(chemin):
+        try:
+            os.remove(chemin)
+        except OSError:
+            pass
+
+
+def supprimer_courrier(db: Session, user: User, courrier_id: int) -> None:
+    courrier = (
+        db.query(Courrier)
+        .options(joinedload(Courrier.pieces_jointes))
+        .filter(Courrier.id == courrier_id)
+        .first()
+    )
+    if courrier is None:
+        raise ValueError("Courrier introuvable.")
+
+    verifier_suppression_courrier(user, courrier)
+
+    numero = courrier.numero
+    for pj in courrier.pieces_jointes:
+        _supprimer_fichier_si_existe(pj.chemin_stockage)
+    _supprimer_fichier_si_existe(courrier.chemin_pdf)
+
+    db.query(Notification).filter(Notification.courrier_id == courrier.id).delete(
+        synchronize_session=False
+    )
+    enregistrer_audit(
+        db,
+        user.id,
+        "suppression_courrier",
+        f"Courrier {numero}",
+        "courriers",
+    )
+    db.delete(courrier)
+    db.commit()
 
 
 def _requete_recherche_courriers(

@@ -34,6 +34,7 @@ from app.services import (
     obtenir_historique,
     signer_courrier_sortant,
     stats_dashboard,
+    supprimer_courrier,
 )
 
 router = APIRouter(tags=["courriers"])
@@ -236,6 +237,18 @@ def patch_courrier(
         return courrier_vers_detail(courrier, user.role, user)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/courriers/{courrier_id}", status_code=204)
+def delete_courrier(
+    courrier_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(exiger_session_complete),
+):
+    try:
+        supprimer_courrier(db, user, courrier_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.patch("/courriers/{courrier_id}/statut", response_model=CourrierDetail)

@@ -7,6 +7,8 @@ from app.constants import service_pour_role
 from app.models import Courrier, PieceJointe, User
 
 ROLES_ACCES_GLOBAL = frozenset({"admin", "dg", "reception"})
+ROLES_SUPPRESSION_GLOBALE = frozenset({"admin", "dg"})
+STATUTS_SUPPRIMABLES_CREATEUR = frozenset({"en_attente", "transmis"})
 
 
 def peut_acceder_courrier(user: User, courrier: Courrier) -> bool:
@@ -26,6 +28,31 @@ def verifier_acces_courrier(user: User, courrier: Courrier) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès non autorisé à ce courrier.",
         )
+
+
+def peut_supprimer_courrier(user: User, courrier: Courrier) -> bool:
+    if user.role in ROLES_SUPPRESSION_GLOBALE:
+        return True
+    if courrier.created_by != user.id:
+        return False
+    return courrier.statut in STATUTS_SUPPRIMABLES_CREATEUR
+
+
+def verifier_suppression_courrier(user: User, courrier: Courrier) -> None:
+    verifier_acces_courrier(user, courrier)
+    if peut_supprimer_courrier(user, courrier):
+        return
+    if courrier.created_by != user.id:
+        detail = "Vous ne pouvez supprimer que les courriers que vous avez créés."
+    else:
+        detail = (
+            "Ce courrier ne peut plus être supprimé (statut avancé). "
+            "Contactez la direction ou l'administrateur."
+        )
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=detail,
+    )
 
 
 def appliquer_filtre_acces_courrier(query: Query, user: User) -> Query:

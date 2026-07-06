@@ -125,6 +125,7 @@ class CourrierDetail(BaseModel):
     signe_par_nom: str | None = None
     signe_le: datetime | None = None
     peut_signer: bool = False
+    peut_supprimer: bool = False
     pieces_jointes: list[PieceJointeResponse] = Field(default_factory=list)
     statuts_possibles: list[str] = Field(default_factory=list)
     created_at: datetime
