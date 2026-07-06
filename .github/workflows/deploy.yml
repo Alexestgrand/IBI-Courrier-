@@ -27,7 +27,7 @@ jobs:
           pip install -r ibi-courriers-web/backend/requirements.txt
           cd ibi-courriers-web/backend && PYTHONPATH=. pytest tests/ -q
         env:
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: ci-test-key
 
       - name: Vérifier les secrets

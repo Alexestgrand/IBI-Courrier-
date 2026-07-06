@@ -28,7 +28,7 @@ jobs:
       - name: Lancer pytest
         working-directory: ibi-courriers-web/backend
         env:
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: test-secret-key
         run: PYTHONPATH=. pytest tests/ -q
 
