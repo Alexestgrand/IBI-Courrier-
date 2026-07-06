@@ -42,9 +42,14 @@ export default function CourriersSortants() {
 
   return (
     <div>
-      <h2 className="page-title">Courriers sortants</h2>
+      <div className="page-header">
+        <h2 className="page-title">Courriers sortants</h2>
+        <Link to="/courriers/sortant/nouveau" className="btn btn-primary">
+          Nouveau sortant
+        </Link>
+      </div>
 
-      <div className="toolbar glass-inner">
+      <div className="toolbar">
         <input
           type="search"
           placeholder="Rechercher…"
@@ -52,9 +57,6 @@ export default function CourriersSortants() {
           onChange={(e) => setRecherche(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && charger()}
         />
-        <button className="btn btn-secondary" onClick={charger}>
-          Filtrer
-        </button>
         <select value={statut} onChange={(e) => setStatut(e.target.value)}>
           {FILTRES_STATUT.map((f) => (
             <option key={f.value} value={f.value}>
@@ -63,25 +65,25 @@ export default function CourriersSortants() {
           ))}
         </select>
         <select value={entiteId} onChange={(e) => setEntiteId(e.target.value)}>
-          <option value="">Toutes filiales</option>
+          <option value="">Toutes les filiales</option>
           {entites.map((e) => (
             <option key={e.id} value={e.id}>
               {e.nom}
             </option>
           ))}
         </select>
-        <Link to="/courriers/sortant/nouveau" className="btn btn-primary">
-          + Nouveau sortant
-        </Link>
+        <button className="btn btn-secondary" onClick={charger}>
+          Filtrer
+        </button>
       </div>
 
-      <div className="card glass-inner" style={{ overflowX: "auto" }}>
+      <div className="panel table-wrap">
         {loading ? (
-          <p>Chargement…</p>
+          <p className="loading-text">Chargement…</p>
         ) : courriers.length === 0 ? (
-          <p style={{ color: "var(--texte-secondaire)" }}>Aucun courrier sortant.</p>
+          <p className="empty-state">Aucun courrier sortant.</p>
         ) : (
-          <table className="data-table">
+          <table>
             <thead>
               <tr>
                 <th>N°</th>

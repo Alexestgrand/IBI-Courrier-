@@ -77,7 +77,7 @@ export default function CourrierDetail() {
     }
   };
 
-  if (!courrier) return <p>Chargement…</p>;
+  if (!courrier) return <p className="loading-text">Chargement…</p>;
 
   const listeRetour =
     courrier.type === "sortant" ? "/courriers/sortants" : "/courriers/entrants";
@@ -85,14 +85,13 @@ export default function CourrierDetail() {
 
   return (
     <div>
-      <Link to={listeRetour} style={{ color: "var(--texte-secondaire)" }}>
+      <Link to={listeRetour} className="page-back">
         ← Retour à la liste
       </Link>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem" }}>
-        <h2 className="page-title" style={{ margin: 0 }}>
-          {courrier.numero}
-        </h2>
-        <div className="actions-row">
+
+      <div className="detail-header">
+        <h2 className="page-title">{courrier.numero}</h2>
+        <div className="actions-row" style={{ marginTop: 0 }}>
           {courrier.type === "sortant" && (
             <button
               className="btn btn-secondary"
@@ -109,10 +108,10 @@ export default function CourrierDetail() {
         </div>
       </div>
 
-      <div className="card glass-inner">
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+      <div className="panel">
+        <div className="detail-meta">
           <BadgeStatut statut={courrier.statut} />
-          <span style={{ color: "var(--texte-secondaire)" }}>
+          <span className="text-secondary">
             {courrier.entite_nom} — {courrier.type === "entrant" ? "Entrant" : "Sortant"}
           </span>
         </div>
@@ -215,19 +214,16 @@ export default function CourrierDetail() {
       </div>
 
       {courrier.pieces_jointes?.length > 0 && (
-        <div className="card glass-inner">
-          <h3 style={{ marginBottom: "0.75rem" }}>
-            Pièces jointes ({courrier.pieces_jointes.length})
-          </h3>
+        <div className="panel">
+          <h3 className="panel__title">Pièces jointes ({courrier.pieces_jointes.length})</h3>
           <ul className="file-list">
             {courrier.pieces_jointes.map((pj) => (
               <li key={pj.id}>
                 <span>
-                  📎 {pj.nom_original} ({formatTaille(pj.taille_octets)})
+                  {pj.nom_original} ({formatTaille(pj.taille_octets)})
                 </span>
                 <button
-                  className="btn btn-secondary"
-                  style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem" }}
+                  className="btn btn-secondary btn-sm"
                   onClick={() => downloadPiece(pj.id, pj.nom_original)}
                 >
                   Télécharger
@@ -239,8 +235,8 @@ export default function CourrierDetail() {
       )}
 
       {courrier.statuts_possibles?.length > 0 && (
-        <div className="card glass-inner">
-          <h3 style={{ marginBottom: "0.75rem" }}>Changer le statut</h3>
+        <div className="panel">
+          <h3 className="panel__title">Changer le statut</h3>
           <div className="form-group">
             <label>Observation (optionnel)</label>
             <textarea
@@ -265,10 +261,10 @@ export default function CourrierDetail() {
         </div>
       )}
 
-      <div className="card glass-inner">
-        <h3 style={{ marginBottom: "0.75rem" }}>Historique</h3>
+      <div className="panel">
+        <h3 className="panel__title">Historique</h3>
         {historique.length === 0 ? (
-          <p style={{ color: "var(--texte-secondaire)" }}>Aucun historique.</p>
+          <p className="text-muted">Aucun historique.</p>
         ) : (
           historique.map((h) => (
             <div key={h.id} className="historique-item">
@@ -278,10 +274,8 @@ export default function CourrierDetail() {
                   : ""}
                 {LIBELLES_STATUT[h.nouveau_statut] || h.nouveau_statut}
               </strong>
-              {h.observation && (
-                <div style={{ color: "var(--texte-secondaire)" }}>{h.observation}</div>
-              )}
-              <div style={{ fontSize: "0.8rem", color: "var(--texte-secondaire)" }}>
+              {h.observation && <div className="text-secondary">{h.observation}</div>}
+              <div className="text-muted" style={{ fontSize: "0.8rem" }}>
                 {h.utilisateur_nom || "—"} — {formatDate(h.date)}
               </div>
             </div>

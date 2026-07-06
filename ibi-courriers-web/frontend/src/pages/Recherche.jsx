@@ -81,9 +81,9 @@ export default function Recherche() {
 
   return (
     <div>
-      <h2 className="page-title">Recherche avancée</h2>
+      <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Recherche avancée</h2>
 
-      <div className="card glass-inner form-grid">
+      <div className="panel form-grid">
         <div className="form-group">
           <label>Mot-clé</label>
           <input
@@ -196,8 +196,8 @@ export default function Recherche() {
         )}
       </div>
 
-      <div className="card glass-inner" style={{ marginTop: "1rem", overflowX: "auto" }}>
-        <p style={{ marginBottom: "0.75rem", color: "var(--texte-secondaire)" }}>
+      <div className="panel table-wrap">
+        <p className="text-secondary" style={{ marginBottom: "0.75rem" }}>
           {resultats.length} résultat(s)
         </p>
         {resultats.length > 0 && (

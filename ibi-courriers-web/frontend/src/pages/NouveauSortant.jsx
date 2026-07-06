@@ -62,9 +62,9 @@ export default function NouveauSortant() {
 
   return (
     <div>
-      <h2 className="page-title">Nouveau courrier sortant</h2>
+      <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Nouveau courrier sortant</h2>
 
-      <form onSubmit={handleSubmit} className="card glass-inner form-grid">
+      <form onSubmit={handleSubmit} className="panel form-grid">
         <div className="form-group">
           <label>Mode de création</label>
           <div className="actions-row">

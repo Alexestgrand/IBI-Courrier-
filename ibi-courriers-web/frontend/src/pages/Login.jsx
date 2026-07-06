@@ -30,10 +30,10 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-card glass-panel">
+      <div className="login-card">
         <img src="/logo-ibi.png" alt="Groupe IBI" className="login-card__logo-img" />
-        <h1>IBI COURRIERS</h1>
-        <p className="subtitle">Groupe IBI — Gestion des courriers</p>
+        <h1>IBI Courriers</h1>
+        <p className="subtitle">Gestion des courriers — Groupe IBI</p>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">E-mail</label>

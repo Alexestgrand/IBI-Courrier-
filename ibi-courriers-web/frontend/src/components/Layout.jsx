@@ -4,10 +4,10 @@ import { useAuth } from "../context/AuthContext";
 const ICONS = {
   dashboard: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
     </svg>
   ),
   entrants: (
@@ -20,11 +20,6 @@ const ICONS = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <line x1="22" y1="2" x2="11" y2="13" />
       <polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  ),
-  nouveau: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 5v14M5 12h14" />
     </svg>
   ),
   recherche: (
@@ -62,67 +57,67 @@ export default function Layout() {
 
   const nav = [
     { to: "/", end: true, label: "Tableau de bord", icon: ICONS.dashboard },
-    { to: "/courriers/entrants", label: "Courriers entrants", icon: ICONS.entrants },
-    { to: "/courriers/sortants", label: "Courriers sortants", icon: ICONS.sortants },
-    { to: "/courriers/nouveau", label: "Nouveau entrant", icon: ICONS.nouveau },
+    { to: "/courriers/entrants", label: "Entrants", icon: ICONS.entrants },
+    { to: "/courriers/sortants", label: "Sortants", icon: ICONS.sortants },
     { to: "/recherche", label: "Recherche", icon: ICONS.recherche },
     ...(isAdmin
       ? [{ to: "/admin/utilisateurs", label: "Utilisateurs", icon: ICONS.users }]
       : []),
-    { to: "/profil", label: "Mon profil", icon: ICONS.profil },
+    { to: "/profil", label: "Profil", icon: ICONS.profil },
   ];
 
   return (
-    <div className="app-layout">
-      <aside className="sidebar-pill glass-panel">
-        <div className="sidebar-pill__logo" title="IBI Courriers">
-          <img src="/logo-ibi.png" alt="IBI" className="sidebar-pill__logo-img" />
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar__brand">
+          <img src="/logo-ibi.png" alt="IBI" className="sidebar__logo" />
+          <div>
+            <div className="sidebar__title">IBI Courriers</div>
+            <div className="sidebar__subtitle">Groupe IBI</div>
+          </div>
         </div>
-        <nav className="sidebar-pill__nav">
+
+        <nav className="sidebar__nav">
           {nav.map(({ to, end, label, icon }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
-              className="sidebar-pill__link"
-              title={label}
+              className={({ isActive }) =>
+                isActive ? "sidebar__link active" : "sidebar__link"
+              }
             >
-              <span className="sidebar-pill__icon">{icon}</span>
+              <span className="sidebar__icon-wrap">{icon}</span>
+              <span>{label}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-pill__footer">
-          <div className="sidebar-pill__avatar" title={`${user?.prenom} ${user?.nom}`}>
-            {initiales || "?"}
-          </div>
+
+        <div className="sidebar__footer">
           <button
-            className="sidebar-pill__link sidebar-pill__logout"
+            className="sidebar__link sidebar__logout"
             onClick={logout}
-            title="Déconnexion"
             type="button"
           >
-            <span className="sidebar-pill__icon">{ICONS.logout}</span>
+            <span className="sidebar__icon-wrap">{ICONS.logout}</span>
+            <span>Déconnexion</span>
           </button>
         </div>
       </aside>
 
-      <div className="main-shell glass-panel">
-        <header className="main-shell__header">
-          <div>
-            <p className="main-shell__eyebrow">Groupe IBI Côte d&apos;Ivoire</p>
-            <h1 className="main-shell__brand">IBI Courriers</h1>
-          </div>
-          <div className="main-shell__user">
+      <div className="app-main">
+        <header className="topbar">
+          <div className="topbar__user">
             <div>
-              <strong>
+              <div className="topbar__name">
                 {user?.prenom} {user?.nom}
-              </strong>
-              <span>{user?.role}</span>
+              </div>
+              <div className="topbar__role">{user?.role}</div>
             </div>
-            <div className="main-shell__avatar">{initiales || "?"}</div>
+            <div className="topbar__avatar">{initiales || "?"}</div>
           </div>
         </header>
-        <main className="main-content">
+        <main className="page-content">
           <Outlet />
         </main>
       </div>

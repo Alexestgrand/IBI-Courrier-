@@ -39,9 +39,9 @@ export default function Profil() {
 
   return (
     <div>
-      <h2 className="page-title">Mon profil</h2>
+      <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Mon profil</h2>
 
-      <div className="card glass-inner" style={{ marginBottom: "1rem" }}>
+      <div className="panel" style={{ marginBottom: "1rem" }}>
         <dl className="detail-grid">
           <dt>Nom</dt>
           <dd>
@@ -54,8 +54,8 @@ export default function Profil() {
         </dl>
       </div>
 
-      <form onSubmit={handleSubmit} className="card glass-inner form-grid">
-        <h3 style={{ gridColumn: "1 / -1" }}>Changer le mot de passe</h3>
+      <form onSubmit={handleSubmit} className="panel form-grid">
+        <h3 className="panel__title" style={{ gridColumn: "1 / -1", marginBottom: 0 }}>Changer le mot de passe</h3>
         <div className="form-group">
           <label>Ancien mot de passe</label>
           <input type="password" value={ancien} onChange={(e) => setAncien(e.target.value)} required />
@@ -69,7 +69,7 @@ export default function Profil() {
           <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
         </div>
         {erreur && <p className="error-msg" style={{ gridColumn: "1 / -1" }}>{erreur}</p>}
-        {message && <p style={{ gridColumn: "1 / -1", color: "var(--succes)" }}>{message}</p>}
+        {message && <p className="success-msg" style={{ gridColumn: "1 / -1" }}>{message}</p>}
         <div style={{ gridColumn: "1 / -1" }}>
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? "Enregistrement…" : "Modifier le mot de passe"}

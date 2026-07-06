@@ -42,9 +42,14 @@ export default function CourriersEntrants() {
 
   return (
     <div>
-      <h2 className="page-title">Courriers entrants</h2>
+      <div className="page-header">
+        <h2 className="page-title">Courriers entrants</h2>
+        <Link to="/courriers/nouveau" className="btn btn-primary">
+          Nouveau entrant
+        </Link>
+      </div>
 
-      <div className="toolbar glass-inner">
+      <div className="toolbar">
         <input
           type="search"
           placeholder="Rechercher…"
@@ -70,16 +75,13 @@ export default function CourriersEntrants() {
         <button className="btn btn-secondary" onClick={charger}>
           Filtrer
         </button>
-        <Link to="/courriers/nouveau" className="btn btn-primary">
-          + Nouveau
-        </Link>
       </div>
 
-      <div className="card table-wrap glass-inner">
+      <div className="panel table-wrap">
         {loading ? (
-          <p>Chargement…</p>
+          <p className="loading-text">Chargement…</p>
         ) : courriers.length === 0 ? (
-          <p style={{ color: "var(--texte-secondaire)" }}>Aucun courrier trouvé.</p>
+          <p className="empty-state">Aucun courrier trouvé.</p>
         ) : (
           <table>
             <thead>

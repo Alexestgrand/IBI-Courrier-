@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-import BackgroundScene from "./components/BackgroundScene";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -15,14 +14,14 @@ import Profil from "./pages/Profil";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <p style={{ padding: "2rem" }}>Chargement…</p>;
+  if (loading) return <p className="loading-text" style={{ padding: "2rem" }}>Chargement…</p>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <p style={{ padding: "2rem" }}>Chargement…</p>;
+  if (loading) return <p className="loading-text" style={{ padding: "2rem" }}>Chargement…</p>;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "admin") return <Navigate to="/" replace />;
   return children;
@@ -31,7 +30,6 @@ function AdminRoute({ children }) {
 export default function App() {
   return (
     <>
-      <BackgroundScene />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route

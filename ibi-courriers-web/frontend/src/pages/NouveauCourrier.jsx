@@ -73,9 +73,9 @@ export default function NouveauCourrier() {
 
   return (
     <div>
-      <h2 className="page-title">Nouveau courrier entrant</h2>
+      <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Nouveau courrier entrant</h2>
 
-      <form className="card glass-inner" onSubmit={handleSubmit} style={{ maxWidth: 720 }}>
+      <form className="panel form-max" onSubmit={handleSubmit}>
         <div className="form-row">
           <div className="form-group">
             <label>Filiale *</label>
@@ -203,7 +203,7 @@ export default function NouveauCourrier() {
               {fichiers.map((f, i) => (
                 <li key={`${f.name}-${i}`}>
                   <span>
-                    📎 {f.name} ({formatTaille(f.size)})
+                    {f.name} ({formatTaille(f.size)})
                   </span>
                   <button type="button" onClick={() => retirerFichier(i)}>
                     ✕

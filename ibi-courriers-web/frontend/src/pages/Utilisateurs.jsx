@@ -102,9 +102,9 @@ export default function Utilisateurs() {
 
   return (
     <div>
-      <h2 className="page-title">Gestion des utilisateurs</h2>
+      <h2 className="page-title" style={{ marginBottom: "1.25rem" }}>Gestion des utilisateurs</h2>
 
-      <div className="toolbar glass-inner">
+      <div className="toolbar">
         <input
           placeholder="Rechercher…"
           value={recherche}
@@ -124,8 +124,8 @@ export default function Utilisateurs() {
         </button>
       </div>
 
-      <form onSubmit={soumettre} className="card glass-inner form-grid" style={{ marginTop: "1rem" }}>
-        <h3 style={{ gridColumn: "1 / -1" }}>
+      <form onSubmit={soumettre} className="panel form-grid">
+        <h3 className="panel__title" style={{ gridColumn: "1 / -1", marginBottom: 0 }}>
           {editId ? "Modifier utilisateur" : "Nouvel utilisateur"}
         </h3>
         <div className="form-group">
@@ -174,7 +174,7 @@ export default function Utilisateurs() {
           </div>
         )}
         {erreur && <p className="error-msg" style={{ gridColumn: "1 / -1" }}>{erreur}</p>}
-        {message && <p style={{ gridColumn: "1 / -1", color: "var(--succes)" }}>{message}</p>}
+        {message && <p className="success-msg" style={{ gridColumn: "1 / -1" }}>{message}</p>}
         <div className="actions-row" style={{ gridColumn: "1 / -1" }}>
           <button type="submit" className="btn btn-primary">
             {editId ? "Enregistrer" : "Créer"}
@@ -187,8 +187,8 @@ export default function Utilisateurs() {
         </div>
       </form>
 
-      <div className="card glass-inner" style={{ marginTop: "1rem", overflowX: "auto" }}>
-        <table className="data-table">
+      <div className="panel table-wrap">
+        <table>
           <thead>
             <tr>
               <th>Nom</th>
@@ -211,13 +211,13 @@ export default function Utilisateurs() {
                 <td>{u.derniere_connexion ? formatDate(u.derniere_connexion) : "—"}</td>
                 <td>
                   <div className="actions-row">
-                    <button className="btn btn-secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => editer(u)}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => editer(u)}>
                       Modifier
                     </button>
-                    <button className="btn btn-secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => resetMdp(u.id)}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => resetMdp(u.id)}>
                       MDP
                     </button>
-                    <button className="btn btn-secondary" style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }} onClick={() => toggleActif(u)}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => toggleActif(u)}>
                       {u.actif ? "Désactiver" : "Activer"}
                     </button>
                   </div>
@@ -228,13 +228,13 @@ export default function Utilisateurs() {
         </table>
       </div>
 
-      <div className="card glass-inner" style={{ marginTop: "1rem" }}>
-        <h3>Journal d&apos;audit (20 dernières entrées)</h3>
+      <div className="panel">
+        <h3 className="panel__title">Journal d&apos;audit (20 dernières entrées)</h3>
         {audit.map((a) => (
           <div key={a.id} className="historique-item">
             <strong>{a.action}</strong>
-            <div style={{ color: "var(--texte-secondaire)" }}>{a.detail}</div>
-            <div style={{ fontSize: "0.8rem", color: "var(--texte-secondaire)" }}>
+            <div className="text-secondary">{a.detail}</div>
+            <div className="text-muted" style={{ fontSize: "0.8rem" }}>
               {a.utilisateur_nom || "—"} — {a.module} — {formatDate(a.date)}
             </div>
           </div>
