@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, exportRechercheCsv, exportRecherchePdf } from "../api/client";
+import Pagination from "../components/Pagination";
 import { useToast } from "../context/ToastContext";
 import { BadgeStatut, FILTRES_STATUT, formatDate } from "../utils";
+
+const PAGE_SIZE = 25;
 
 const TYPES = [
   { label: "Tous", value: "" },
@@ -22,9 +25,11 @@ export default function Recherche() {
   const [entites, setEntites] = useState([]);
   const [services, setServices] = useState([]);
   const [resultats, setResultats] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, pages: 0, total: 0 });
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState("");
   const [derniersParams, setDerniersParams] = useState({});
+  const [aRecherche, setARecherche] = useState(false);
 
   const [filtres, setFiltres] = useState({
     mot_cle: "",
@@ -61,14 +66,16 @@ export default function Recherche() {
     return params;
   };
 
-  const lancer = async () => {
+  const lancer = async (pageCourante = 1) => {
     setErreur("");
     setLoading(true);
     try {
-      const params = preparerParams();
+      const params = { ...preparerParams(), page: pageCourante, page_size: PAGE_SIZE };
       const data = await api.recherche(params);
-      setResultats(data);
-      setDerniersParams(params);
+      setResultats(data.items);
+      setMeta({ page: data.page, pages: data.pages, total: data.total });
+      setDerniersParams(preparerParams());
+      setARecherche(true);
     } catch (err) {
       setErreur(err.message);
     } finally {
@@ -173,10 +180,15 @@ export default function Recherche() {
           />
         </div>
         <div className="actions-row" style={{ gridColumn: "1 / -1" }}>
-          <button className="btn btn-primary" onClick={lancer} disabled={loading}>
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => lancer(1)}
+            disabled={loading}
+          >
             {loading ? "Recherche…" : "Rechercher"}
           </button>
-          {resultats.length > 0 && (
+          {meta.total > 0 && (
             <>
             <button
               className="btn btn-secondary"
@@ -212,8 +224,11 @@ export default function Recherche() {
 
       <div className="panel table-wrap">
         <p className="text-secondary" style={{ marginBottom: "0.75rem" }}>
-          {resultats.length} résultat(s)
+          {aRecherche ? `${meta.total} résultat(s)` : "Lancez une recherche avec les filtres ci-dessus."}
         </p>
+        {aRecherche && resultats.length === 0 && !loading && (
+          <p className="empty-state">Aucun courrier ne correspond à ces critères.</p>
+        )}
         {resultats.length > 0 && (
           <table className="data-table">
             <thead>
@@ -249,6 +264,15 @@ export default function Recherche() {
           </table>
         )}
       </div>
+
+      {meta.pages > 1 && (
+        <Pagination
+          page={meta.page}
+          pages={meta.pages}
+          total={meta.total}
+          onPageChange={(p) => lancer(p)}
+        />
+      )}
     </div>
   );
 }

@@ -1,1 +1,20 @@
-# Répertoire des migrations Alembic
+# Migrations Alembic — IBI Courriers
+
+Les migrations sont appliquées automatiquement au démarrage du backend (`app/migrate.py`).
+
+## Commandes utiles (développement)
+
+```bash
+cd backend
+alembic upgrade head
+alembic history
+```
+
+## Révisions
+
+| Révision | Description |
+|----------|-------------|
+| `001_baseline` | Création des tables (SQLAlchemy metadata) |
+| `002_performance_indexes` | Index sur courriers, notifications, audit |
+
+Les bases existantes (avant Alembic) sont tamponnées à `001_baseline` puis migrées vers `head`.

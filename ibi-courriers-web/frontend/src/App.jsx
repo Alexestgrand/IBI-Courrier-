@@ -1,32 +1,36 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import CourriersEntrants from "./pages/CourriersEntrants";
-import CourriersSortants from "./pages/CourriersSortants";
-import NouveauCourrier from "./pages/NouveauCourrier";
-import NouveauSortant from "./pages/NouveauSortant";
-import CourrierDetail from "./pages/CourrierDetail";
-import Recherche from "./pages/Recherche";
-import Utilisateurs from "./pages/Utilisateurs";
-import Sauvegardes from "./pages/Sauvegardes";
-import Aide from "./pages/Aide";
-import AValider from "./pages/AValider";
-import Rapports from "./pages/Rapports";
-import Profil from "./pages/Profil";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CourriersEntrants = lazy(() => import("./pages/CourriersEntrants"));
+const CourriersSortants = lazy(() => import("./pages/CourriersSortants"));
+const NouveauCourrier = lazy(() => import("./pages/NouveauCourrier"));
+const NouveauSortant = lazy(() => import("./pages/NouveauSortant"));
+const CourrierDetail = lazy(() => import("./pages/CourrierDetail"));
+const Recherche = lazy(() => import("./pages/Recherche"));
+const Utilisateurs = lazy(() => import("./pages/Utilisateurs"));
+const Sauvegardes = lazy(() => import("./pages/Sauvegardes"));
+const Aide = lazy(() => import("./pages/Aide"));
+const AValider = lazy(() => import("./pages/AValider"));
+const Rapports = lazy(() => import("./pages/Rapports"));
+const Profil = lazy(() => import("./pages/Profil"));
+
+function PageLoader() {
+  return (
+    <p className="loading-text" style={{ padding: "2rem" }}>
+      Chargement…
+    </p>
+  );
+}
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
-    return (
-      <p className="loading-text" style={{ padding: "2rem" }}>
-        Chargement…
-      </p>
-    );
-  }
+  if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
 
   if (user.must_change_password && location.pathname !== "/profil") {
@@ -38,13 +42,7 @@ function PrivateRoute({ children }) {
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <p className="loading-text" style={{ padding: "2rem" }}>
-        Chargement…
-      </p>
-    );
-  }
+  if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "admin") return <Navigate to="/" replace />;
   return children;
@@ -52,13 +50,7 @@ function AdminRoute({ children }) {
 
 function DgRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <p className="loading-text" style={{ padding: "2rem" }}>
-        Chargement…
-      </p>
-    );
-  }
+  if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "dg" && user.role !== "admin") {
     return <Navigate to="/" replace />;
@@ -68,7 +60,7 @@ function DgRoute({ children }) {
 
 export default function App() {
   return (
-    <>
+    <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -122,6 +114,6 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </Suspense>
   );
 }

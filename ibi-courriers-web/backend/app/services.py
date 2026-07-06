@@ -22,7 +22,17 @@ from app.constants import (
     URGENCES_VALIDES,
     service_pour_role,
 )
+from app.database import engine
 from app.models import AuditLog, Courrier, Entite, PieceJointe, Service, StatutLog, User
+
+MAX_RECHERCHE_EXPORT = 5000
+
+
+def _filtre_mois_egal(coalesce_ts, mois_yyyy_mm: str):
+    """Filtre calendaire YYYY-MM compatible PostgreSQL (prod) et SQLite (tests)."""
+    if engine.dialect.name == "postgresql":
+        return func.to_char(coalesce_ts, "YYYY-MM") == mois_yyyy_mm
+    return func.strftime("%Y-%m", coalesce_ts) == mois_yyyy_mm
 
 
 def _code_entite(nom: str) -> str:
@@ -303,6 +313,22 @@ def stats_rapport_mensuel(db: Session, annee: int, mois: int) -> dict:
         .all()
     )
 
+    courrier_ids = [c.id for c in courriers]
+    logs_par_courrier: dict[int, StatutLog] = {}
+    if courrier_ids:
+        logs_traitement = (
+            db.query(StatutLog)
+            .filter(
+                StatutLog.courrier_id.in_(courrier_ids),
+                StatutLog.nouveau_statut.in_(("valide", "rejete")),
+            )
+            .order_by(StatutLog.courrier_id, StatutLog.date.asc())
+            .all()
+        )
+        for log in logs_traitement:
+            if log.courrier_id not in logs_par_courrier:
+                logs_par_courrier[log.courrier_id] = log
+
     par_service: dict[str, int] = {}
     par_statut: dict[str, int] = {}
     delais_par_service: dict[str, list[float]] = {}
@@ -316,15 +342,7 @@ def stats_rapport_mensuel(db: Session, annee: int, mois: int) -> dict:
         par_service[service] = par_service.get(service, 0) + 1
         par_statut[courrier.statut] = par_statut.get(courrier.statut, 0) + 1
 
-        log = (
-            db.query(StatutLog)
-            .filter(
-                StatutLog.courrier_id == courrier.id,
-                StatutLog.nouveau_statut.in_(("valide", "rejete")),
-            )
-            .order_by(StatutLog.date.asc())
-            .first()
-        )
+        log = logs_par_courrier.get(courrier.id)
         if log and courrier.created_at:
             created = courrier.created_at
             if created.tzinfo is None:
@@ -565,11 +583,10 @@ def stats_dashboard(db: Session, user: User | None = None) -> dict:
                     Courrier.service_destinataire == service.nom,
                     Courrier.service_emetteur == service.nom,
                 ),
-                func.to_char(
+                _filtre_mois_egal(
                     func.coalesce(Courrier.updated_at, Courrier.created_at),
-                    "YYYY-MM",
-                )
-                == mois_actuel,
+                    mois_actuel,
+                ),
             )
             .count()
         )
@@ -829,7 +846,7 @@ def modifier_courrier(
     return courrier
 
 
-def rechercher_courriers(
+def _requete_recherche_courriers(
     db: Session,
     user: User | None = None,
     mot_cle: str | None = None,
@@ -840,7 +857,7 @@ def rechercher_courriers(
     entite_id: int | None = None,
     date_debut: str | None = None,
     date_fin: str | None = None,
-) -> list[dict]:
+):
     query = (
         db.query(Courrier)
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
@@ -879,37 +896,114 @@ def rechercher_courriers(
 
     debut = _parser_date_jjmmaaaa(date_debut) if date_debut else None
     fin = _parser_date_jjmmaaaa(date_fin) if date_fin else None
+    if debut:
+        query = query.filter(Courrier.created_at >= debut)
+    if fin:
+        fin_fin_journee = fin.replace(hour=23, minute=59, second=59)
+        query = query.filter(Courrier.created_at <= fin_fin_journee)
 
+    return query
+
+
+def rechercher_courriers(
+    db: Session,
+    user: User | None = None,
+    mot_cle: str | None = None,
+    type_courrier: str | None = None,
+    statut: str | None = None,
+    service: str | None = None,
+    urgence: str | None = None,
+    entite_id: int | None = None,
+    date_debut: str | None = None,
+    date_fin: str | None = None,
+    page: int = 1,
+    page_size: int = 25,
+) -> dict:
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+
+    query = _requete_recherche_courriers(
+        db,
+        user,
+        mot_cle=mot_cle,
+        type_courrier=type_courrier,
+        statut=statut,
+        service=service,
+        urgence=urgence,
+        entite_id=entite_id,
+        date_debut=date_debut,
+        date_fin=date_fin,
+    )
+
+    total = query.count()
+    pages = max(1, (total + page_size - 1) // page_size)
+    if page > pages:
+        page = pages
+
+    courriers = (
+        query.order_by(Courrier.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return {
+        "items": [courrier_vers_liste(c) for c in courriers],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
+
+
+def rechercher_courriers_export(
+    db: Session,
+    user: User | None = None,
+    mot_cle: str | None = None,
+    type_courrier: str | None = None,
+    statut: str | None = None,
+    service: str | None = None,
+    urgence: str | None = None,
+    entite_id: int | None = None,
+    date_debut: str | None = None,
+    date_fin: str | None = None,
+) -> list[dict]:
+    query = _requete_recherche_courriers(
+        db,
+        user,
+        mot_cle=mot_cle,
+        type_courrier=type_courrier,
+        statut=statut,
+        service=service,
+        urgence=urgence,
+        entite_id=entite_id,
+        date_debut=date_debut,
+        date_fin=date_fin,
+    )
+    total = query.count()
+    if total > MAX_RECHERCHE_EXPORT:
+        raise ValueError(
+            f"Trop de résultats ({total}). Affinez les filtres "
+            f"(maximum {MAX_RECHERCHE_EXPORT} pour l'export)."
+        )
     courriers = query.order_by(Courrier.created_at.desc()).all()
-
-    if debut or fin:
-        filtres = []
-        for c in courriers:
-            date_c = _date_courrier_pour_filtre(c)
-            if date_c is None:
-                continue
-            if debut and date_c.date() < debut.date():
-                continue
-            if fin and date_c.date() > fin.date():
-                continue
-            filtres.append(c)
-        courriers = filtres
-
     return [courrier_vers_liste(c) for c in courriers]
 
 
 def lister_audit(db: Session, module: str | None = None, limite: int = 50) -> list[dict]:
-    query = db.query(AuditLog).order_by(AuditLog.date.desc())
+    query = (
+        db.query(AuditLog)
+        .options(joinedload(AuditLog.utilisateur))
+        .order_by(AuditLog.date.desc())
+    )
     if module:
         query = query.filter(AuditLog.module == module)
     logs = query.limit(limite).all()
     resultat = []
     for log in logs:
         nom = None
-        if log.user_id:
-            u = db.query(User).filter(User.id == log.user_id).first()
-            if u:
-                nom = f"{u.prenom} {u.nom}"
+        if log.utilisateur:
+            nom = f"{log.utilisateur.prenom} {log.utilisateur.nom}"
         resultat.append(
             {
                 "id": log.id,

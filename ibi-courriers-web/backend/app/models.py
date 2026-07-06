@@ -164,3 +164,5 @@ class AuditLog(Base):
     date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    utilisateur: Mapped["User | None"] = relationship(foreign_keys=[user_id])

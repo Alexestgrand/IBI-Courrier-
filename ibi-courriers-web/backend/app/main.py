@@ -9,9 +9,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import Base, SessionLocal, engine, get_db
+from app.database import Base, SessionLocal, get_db
 from app.health import verifier_sante_publique
-from app.migrations import appliquer_migrations_schema
+from app.migrate import executer_migrations
 from app.routers import admin, auth, courriers, notifications, ocr, rapports, search, users
 from app.seed import initialiser_donnees
 from app.startup_checks import valider_configuration
@@ -42,22 +42,13 @@ app.include_router(users.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 
 
-def _executer_alembic() -> None:
+def _executer_migrations_au_demarrage() -> None:
     try:
-        from alembic import command
-        from alembic.config import Config
-        from sqlalchemy import inspect
-
-        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
-
-        insp = inspect(engine)
-        if not insp.has_table("alembic_version"):
-            command.stamp(alembic_cfg, "head")
-        else:
-            command.upgrade(alembic_cfg, "head")
+        executer_migrations()
     except Exception as exc:
-        logger.warning("Alembic non appliqué : %s", exc)
+        logger.error("Échec des migrations Alembic : %s", exc)
+        if settings.environment.lower() in ("production", "prod"):
+            raise
 
 
 @app.on_event("startup")
@@ -66,9 +57,7 @@ def on_startup() -> None:
     os.makedirs(settings.upload_dir, exist_ok=True)
     os.makedirs(settings.backup_dir, exist_ok=True)
     os.makedirs(settings.migration_dir, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
-    appliquer_migrations_schema()
-    _executer_alembic()
+    _executer_migrations_au_demarrage()
     db = SessionLocal()
     try:
         initialiser_donnees(db)
