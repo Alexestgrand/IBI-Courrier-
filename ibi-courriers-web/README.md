@@ -146,7 +146,25 @@ Dans le dépôt GitHub → **Settings → Secrets and variables → Actions** :
 |--------|--------|
 | `VPS_HOST` | `187.124.49.6` |
 | `VPS_USER` | `deploy` |
-| `VPS_SSH_KEY` | contenu de `~/.ssh/github_actions` (clé privée) |
+| `VPS_SSH_KEY` | clé privée complète (voir format ci-dessous) |
+
+**Format du secret `VPS_SSH_KEY`** — copier-coller **tout** le fichier, y compris :
+
+```
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+Vérifier qu'il n'y a **pas d'espace** avant/après, et qu'une **ligne vide** existe à la fin.
+
+Test manuel depuis votre Mac :
+
+```bash
+ssh -i ~/.ssh/github_actions deploy@187.124.49.6 "echo SSH OK"
+```
+
+Si ça fonctionne, la même clé dans GitHub Actions fonctionnera.
 
 ### 3. Déploiement manuel (si besoin)
 

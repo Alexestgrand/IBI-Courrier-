@@ -16,23 +16,36 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Déployer via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script_stop: true
-          command_timeout: 15m
-          script: |
-            set -euo pipefail
-            cd ~/IBI-Courrier-
-            git fetch origin main
-            git reset --hard origin/main
-            cd ibi-courriers-web
-            chmod +x scripts/deploy.sh scripts/backup.sh 2>/dev/null || true
-            docker compose -f docker-compose.prod.yml up -d --build
-            docker compose -f docker-compose.prod.yml ps
-            curl -sf http://127.0.0.1:8080/api/health
-            echo ""
-            echo "Déploiement GitHub Actions OK"
+      - name: Vérifier les secrets
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "Secret VPS_HOST manquant"; exit 1; fi
+          if [ -z "${{ secrets.VPS_USER }}" ]; then echo "Secret VPS_USER manquant"; exit 1; fi
+          if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then echo "Secret VPS_SSH_KEY manquant"; exit 1; fi
+          echo "Secrets OK"
+
+      - name: Configurer SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Déployer sur le VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            "${VPS_USER}@${VPS_HOST}" << 'ENDSSH'
+          set -euo pipefail
+          cd ~/IBI-Courrier-
+          git fetch origin main
+          git reset --hard origin/main
+          cd ibi-courriers-web
+          chmod +x scripts/deploy.sh scripts/backup.sh 2>/dev/null || true
+          docker compose -f docker-compose.prod.yml up -d --build
+          docker compose -f docker-compose.prod.yml ps
+          curl -sf http://127.0.0.1:8080/api/health
+          echo ""
+          echo "Déploiement GitHub Actions OK"
+          ENDSSH
