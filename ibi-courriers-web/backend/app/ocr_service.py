@@ -1,4 +1,4 @@
-"""Extraction OCR / texte depuis scans et PDF."""
+"""Amélioration extraction OCR pour scans de qualité moyenne."""
 
 from __future__ import annotations
 
@@ -21,16 +21,42 @@ REF_PATTERNS = [
 OBJET_PATTERNS = [
     re.compile(r"objet\s*[:\-]\s*(.+)", re.IGNORECASE),
     re.compile(r"concernant\s*[:\-]?\s*(.+)", re.IGNORECASE),
+    re.compile(r"affaire\s*[:\-]\s*(.+)", re.IGNORECASE),
 ]
 
 EXPEDITEUR_PATTERNS = [
-    re.compile(r"(?:de|exp[ée]diteur|sender)\s*[:\-]\s*(.+)", re.IGNORECASE),
+    re.compile(r"(?:de|exp[ée]diteur|sender|émetteur)\s*[:\-]\s*(.+)", re.IGNORECASE),
     re.compile(r"(?:monsieur|madame|m\.|mme\.?|dr\.?)\s+(.+)", re.IGNORECASE),
 ]
+
+ORGANISME_PATTERNS = [
+    re.compile(r"\b(SA|SARL|SAS|S\.A\.|S\.A\.R\.L\.)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(ministère|direction générale|banque|société|groupe|office|ordre)\b",
+        re.IGNORECASE,
+    ),
+]
+
+LIGNE_A_IGNORER = re.compile(
+    r"^(page\s+\d+|tél|tel|fax|e-?mail|www\.|http|bp\s+\d+|"
+    r"\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|"
+    r"^\d+$|abidjan|plateau|cocody|treichville)",
+    re.IGNORECASE,
+)
 
 
 def _tesseract_disponible() -> bool:
     return shutil.which("tesseract") is not None
+
+
+def _pretraiter_image(image):
+    from PIL import ImageEnhance, ImageOps
+
+    image = ImageOps.exif_transpose(image)
+    image = image.convert("L")
+    image = ImageEnhance.Contrast(image).enhance(1.6)
+    image = ImageEnhance.Sharpness(image).enhance(1.3)
+    return image
 
 
 def _ocr_image(contenu: bytes) -> str:
@@ -45,7 +71,9 @@ def _ocr_image(contenu: bytes) -> str:
 
     try:
         image = Image.open(io.BytesIO(contenu))
-        return pytesseract.image_to_string(image, lang="fra+eng")
+        image = _pretraiter_image(image)
+        config = "--psm 6 --oem 3"
+        return pytesseract.image_to_string(image, lang="fra+eng", config=config)
     except Exception as exc:
         logger.warning("OCR image échoué : %s", exc)
         return ""
@@ -80,17 +108,19 @@ def _ocr_pdf_scan(contenu: bytes) -> str:
         return ""
 
     try:
-        images = convert_from_bytes(contenu, first_page=1, last_page=1, dpi=200)
-        if not images:
-            return ""
-        return pytesseract.image_to_string(images[0], lang="fra+eng")
+        images = convert_from_bytes(contenu, first_page=1, last_page=2, dpi=300)
+        textes: list[str] = []
+        config = "--psm 6 --oem 3"
+        for image in images:
+            image = _pretraiter_image(image)
+            textes.append(pytesseract.image_to_string(image, lang="fra+eng", config=config))
+        return "\n".join(textes)
     except Exception as exc:
         logger.warning("OCR PDF scan échoué : %s", exc)
         return ""
 
 
 def extraire_texte(contenu: bytes, nom_fichier: str) -> tuple[str, str]:
-    """Retourne (texte, méthode utilisée)."""
     ext = (nom_fichier.rsplit(".", 1)[-1] if "." in nom_fichier else "").lower()
 
     if ext == "pdf":
@@ -109,16 +139,53 @@ def extraire_texte(contenu: bytes, nom_fichier: str) -> tuple[str, str]:
     return "", "non_supporte"
 
 
-def _premiere_ligne_significative(lignes: list[str]) -> str | None:
-    for ligne in lignes:
+def _lignes_utiles(texte: str) -> list[str]:
+    lignes: list[str] = []
+    for ligne in texte.splitlines():
         ligne = ligne.strip()
-        if len(ligne) >= 3 and not ligne.isdigit():
+        if len(ligne) < 3:
+            continue
+        if LIGNE_A_IGNORER.search(ligne):
+            continue
+        lignes.append(ligne)
+    return lignes
+
+
+def _score_ligne_expediteur(ligne: str) -> int:
+    score = min(len(ligne), 80)
+    if ORGANISME_PATTERNS[0].search(ligne):
+        score += 40
+    if ORGANISME_PATTERNS[1].search(ligne):
+        score += 30
+    if ligne.isupper() and len(ligne) > 6:
+        score += 20
+    if re.search(r"\d{5,}", ligne):
+        score -= 30
+    return score
+
+
+def _deviner_expediteur(lignes: list[str]) -> str | None:
+    for pattern in EXPEDITEUR_PATTERNS:
+        for ligne in lignes[:15]:
+            match = pattern.search(ligne)
+            if match:
+                candidat = match.group(1).strip().split(",")[0][:120]
+                if len(candidat) >= 3:
+                    return candidat
+
+    candidats = sorted(
+        ((ln, _score_ligne_expediteur(ln)) for ln in lignes[:12]),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    for ligne, score in candidats:
+        if score >= 25 and len(ligne) >= 4:
             return ligne[:120]
-    return None
+    return lignes[0][:120] if lignes else None
 
 
 def _extraire_champs(texte: str) -> dict[str, str | None]:
-    lignes = [ln.strip() for ln in texte.splitlines() if ln.strip()]
+    lignes = _lignes_utiles(texte)
     texte_plat = " ".join(lignes)
 
     reference = None
@@ -134,20 +201,13 @@ def _extraire_champs(texte: str) -> dict[str, str | None]:
         if match:
             objet = match.group(1).strip().split("  ")[0][:200]
             break
-    if not objet and len(lignes) >= 2:
-        for ligne in lignes[1:6]:
-            if len(ligne) > 15 and "objet" not in ligne.lower():
+    if not objet:
+        for ligne in lignes[1:8]:
+            if len(ligne) > 20 and "objet" not in ligne.lower():
                 objet = ligne[:200]
                 break
 
-    expediteur = None
-    for pattern in EXPEDITEUR_PATTERNS:
-        match = pattern.search(texte_plat)
-        if match:
-            expediteur = match.group(1).strip().split(",")[0][:120]
-            break
-    if not expediteur:
-        expediteur = _premiere_ligne_significative(lignes[:8])
+    expediteur = _deviner_expediteur(lignes)
 
     return {
         "expediteur": expediteur,
@@ -166,10 +226,20 @@ def analyser_document(contenu: bytes, nom_fichier: str) -> dict[str, Any]:
         avertissement = (
             "OCR images indisponible (Tesseract non installé sur le serveur)."
         )
+    elif methode in ("pdf_ocr", "image_ocr") and not any(champs.values()):
+        avertissement = (
+            "Texte détecté mais peu de champs reconnus — vérifiez et complétez manuellement."
+        )
     elif methode == "pdf_texte" and len(texte.strip()) < 30:
         avertissement = (
             "Peu de texte extrait — document peut-être scanné sans OCR serveur."
         )
+
+    confiance = "basse"
+    if any(champs.values()) and len(texte) > 80:
+        confiance = "haute"
+    elif any(champs.values()):
+        confiance = "moyenne"
 
     return {
         "texte_brut": texte[:4000],
@@ -177,5 +247,5 @@ def analyser_document(contenu: bytes, nom_fichier: str) -> dict[str, Any]:
         "ocr_disponible": ocr_disponible,
         "avertissement": avertissement,
         "suggestions": champs,
-        "confiance": "haute" if any(champs.values()) and len(texte) > 50 else "basse",
+        "confiance": confiance,
     }

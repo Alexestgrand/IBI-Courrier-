@@ -197,6 +197,7 @@ def lister_courriers(
     role_utilisateur: str | None = None,
     page: int = 1,
     page_size: int = 25,
+    urgents_seulement: bool = False,
 ) -> dict:
     page = max(1, page)
     page_size = min(max(1, page_size), 100)
@@ -208,6 +209,11 @@ def lister_courriers(
     )
     if filtre_statut:
         query = query.filter(Courrier.statut == filtre_statut)
+    if urgents_seulement:
+        query = query.filter(
+            Courrier.urgence.in_(("urgent", "très urgent")),
+            Courrier.statut.notin_(("valide", "rejete", "archive")),
+        )
     if entite_id:
         query = query.filter(Courrier.entite_id == entite_id)
 

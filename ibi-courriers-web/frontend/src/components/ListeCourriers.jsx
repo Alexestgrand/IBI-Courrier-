@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import AlerteErreur from "./AlerteErreur";
 import Pagination from "./Pagination";
@@ -62,12 +62,14 @@ function cellule(c, col) {
 export default function ListeCourriers({ type }) {
   const cfg = CONFIG[type];
   usePageTitle(cfg.title);
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const aUnService = Boolean(servicePourRole(user?.role));
   const [courriers, setCourriers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, pages: 1, total: 0 });
   const [entites, setEntites] = useState([]);
-  const [statut, setStatut] = useState("");
+  const [statut, setStatut] = useState(searchParams.get("statut") || "");
+  const [filtreUrgents, setFiltreUrgents] = useState(searchParams.get("urgents") === "1");
   const [entiteId, setEntiteId] = useState("");
   const [recherche, setRecherche] = useState("");
   const [monService, setMonService] = useState(false);
@@ -96,8 +98,14 @@ export default function ListeCourriers({ type }) {
   }, [aUnService, monServiceInit]);
 
   useEffect(() => {
+    setStatut(searchParams.get("statut") || "");
+    setFiltreUrgents(searchParams.get("urgents") === "1");
     setPage(1);
-  }, [statut, entiteId, rechercheDebounced, monService]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statut, entiteId, rechercheDebounced, monService, filtreUrgents]);
 
   const chargerListe = () => {
     const controller = new AbortController();
@@ -110,6 +118,7 @@ export default function ListeCourriers({ type }) {
           entite_id: entiteId || undefined,
           recherche: rechercheDebounced || undefined,
           mon_service: monService || undefined,
+          urgents: filtreUrgents && type === "entrant" ? true : undefined,
           page,
           page_size: PAGE_SIZE,
         },
@@ -137,6 +146,7 @@ export default function ListeCourriers({ type }) {
           entite_id: entiteId || undefined,
           recherche: rechercheDebounced || undefined,
           mon_service: monService || undefined,
+          urgents: filtreUrgents && type === "entrant" ? true : undefined,
           page,
           page_size: PAGE_SIZE,
         },
@@ -153,7 +163,7 @@ export default function ListeCourriers({ type }) {
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [type, statut, entiteId, rechercheDebounced, monService, page]);
+  }, [type, statut, entiteId, rechercheDebounced, monService, filtreUrgents, page]);
 
   return (
     <div>
@@ -163,6 +173,12 @@ export default function ListeCourriers({ type }) {
           {cfg.nouveauLabel}
         </Link>
       </div>
+
+      {filtreUrgents && type === "entrant" && (
+        <p className="info-banner" style={{ marginBottom: "1rem" }}>
+          Affichage des courriers urgents actifs uniquement.
+        </p>
+      )}
 
       <div className="toolbar">
         <input

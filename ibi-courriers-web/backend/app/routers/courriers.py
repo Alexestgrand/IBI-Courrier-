@@ -149,6 +149,7 @@ def get_courriers_entrants(
     entite_id: int | None = None,
     service: str | None = None,
     mon_service: bool = False,
+    urgents: bool = False,
     page: int = 1,
     page_size: int = 25,
     db: Session = Depends(get_db),
@@ -165,6 +166,7 @@ def get_courriers_entrants(
         user.role,
         page,
         page_size,
+        urgents_seulement=urgents,
     )
 
 

@@ -102,8 +102,10 @@ export const api = {
 
   services: (signal) => request("/services", { signal }),
 
-  courriersEntrants: (params = {}, signal) =>
-    request(`/courriers/entrants${buildQuery(params)}`, { signal }),
+  courriersEntrants: (params = {}, signal) => {
+    const qs = buildQuery(params);
+    return request(`/courriers/entrants${qs}`, { signal });
+  },
 
   courriersSortants: (params = {}, signal) =>
     request(`/courriers/sortants${buildQuery(params)}`, { signal }),
