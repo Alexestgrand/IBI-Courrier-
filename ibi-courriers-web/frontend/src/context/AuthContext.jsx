@@ -7,6 +7,12 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUser = async () => {
+    const me = await api.me();
+    setUser(me);
+    return me;
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -23,9 +29,7 @@ export function AuthProvider({ children }) {
   const login = async (email, mot_de_passe) => {
     const { access_token } = await api.login(email, mot_de_passe);
     setToken(access_token);
-    const me = await api.me();
-    setUser(me);
-    return me;
+    return refreshUser();
   };
 
   const logout = () => {
@@ -34,7 +38,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, setUser }}>
       {children}
     </AuthContext.Provider>
   );

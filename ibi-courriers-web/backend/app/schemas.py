@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    must_change_password: bool = False
 
 
 class LoginRequest(BaseModel):
@@ -22,6 +23,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     actif: bool
+    must_change_password: bool = False
     derniere_connexion: datetime | None = None
 
     model_config = {"from_attributes": True}
@@ -83,6 +85,14 @@ class CourrierListItem(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PaginatedCourriersResponse(BaseModel):
+    items: list[CourrierListItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
 
 
 class CourrierDetail(BaseModel):

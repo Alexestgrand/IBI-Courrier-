@@ -13,6 +13,10 @@ def initialiser_donnees(db: Session) -> None:
     if admin is not None:
         admin.email = "admin@ibi.ci"
 
+    admin_ci = db.query(User).filter(User.email == "admin@ibi.ci").first()
+    if admin_ci is not None and admin_ci.derniere_connexion is None:
+        admin_ci.must_change_password = True
+
     if db.query(User).count() == 0:
         db.add(
             User(
@@ -22,6 +26,7 @@ def initialiser_donnees(db: Session) -> None:
                 mot_de_passe=hasher_mot_de_passe("admin123"),
                 role="admin",
                 actif=True,
+                must_change_password=True,
             )
         )
 

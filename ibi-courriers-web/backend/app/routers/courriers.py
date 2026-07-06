@@ -15,6 +15,7 @@ from app.schemas import (
     CourrierListItem,
     CourrierUpdateRequest,
     DashboardStats,
+    PaginatedCourriersResponse,
     EntiteResponse,
     ServiceResponse,
     StatutLogResponse,
@@ -59,15 +60,19 @@ def get_stats(
     return stats_dashboard(db)
 
 
-@router.get("/courriers/sortants", response_model=list[CourrierListItem])
+@router.get("/courriers/sortants", response_model=PaginatedCourriersResponse)
 def get_courriers_sortants(
     statut: str | None = None,
     recherche: str | None = None,
     entite_id: int | None = None,
+    page: int = 1,
+    page_size: int = 25,
     db: Session = Depends(get_db),
     _: User = Depends(obtenir_utilisateur_courant),
 ):
-    return lister_courriers(db, "sortant", statut, recherche, entite_id)
+    return lister_courriers(
+        db, "sortant", statut, recherche, entite_id, page, page_size
+    )
 
 
 @router.post("/courriers/sortants", response_model=CourrierDetail, status_code=201)
@@ -109,15 +114,19 @@ async def post_courrier_sortant(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/courriers/entrants", response_model=list[CourrierListItem])
+@router.get("/courriers/entrants", response_model=PaginatedCourriersResponse)
 def get_courriers_entrants(
     statut: str | None = None,
     recherche: str | None = None,
     entite_id: int | None = None,
+    page: int = 1,
+    page_size: int = 25,
     db: Session = Depends(get_db),
     _: User = Depends(obtenir_utilisateur_courant),
 ):
-    return lister_courriers(db, "entrant", statut, recherche, entite_id)
+    return lister_courriers(
+        db, "entrant", statut, recherche, entite_id, page, page_size
+    )
 
 
 @router.post("/courriers/entrants", response_model=CourrierDetail, status_code=201)

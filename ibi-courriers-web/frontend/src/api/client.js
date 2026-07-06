@@ -138,15 +138,11 @@ function downloadBlob(path, filename) {
 }
 
 export function downloadPiece(pieceId, nom) {
-  downloadBlob(`/pieces-jointes/${pieceId}/download`, nom).catch((e) =>
-    alert(e.message)
-  );
+  return downloadBlob(`/pieces-jointes/${pieceId}/download`, nom);
 }
 
 export function downloadPdf(courrierId, numero) {
-  downloadBlob(`/courriers/${courrierId}/pdf`, `${numero}.pdf`).catch((e) =>
-    alert(e.message)
-  );
+  return downloadBlob(`/courriers/${courrierId}/pdf`, `${numero}.pdf`);
 }
 
 export function exportRecherchePdf(filtres) {

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine
+from app.migrations import appliquer_migrations_schema
 from app.routers import auth, courriers, search, users
 from app.seed import initialiser_donnees
 
@@ -34,6 +35,7 @@ app.include_router(search.router, prefix="/api")
 def on_startup() -> None:
     os.makedirs(settings.upload_dir, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    appliquer_migrations_schema()
     db = SessionLocal()
     try:
         initialiser_donnees(db)

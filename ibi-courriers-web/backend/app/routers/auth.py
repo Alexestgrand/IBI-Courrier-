@@ -44,7 +44,10 @@ def login(data: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     db.commit()
 
     token = creer_token_acces(user.id, user.role)
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token,
+        must_change_password=user.must_change_password,
+    )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -71,6 +74,7 @@ def change_password(
             detail="Le nouveau mot de passe doit contenir au moins 6 caractères.",
         )
     user.mot_de_passe = hasher_mot_de_passe(data.nouveau_mot_de_passe)
+    user.must_change_password = False
     enregistrer_audit(db, user.id, "changement_mot_de_passe", user.email, "auth")
     db.commit()
     return {"message": "Mot de passe modifié."}

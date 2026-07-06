@@ -11,7 +11,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/", { replace: true });
+    if (user) {
+      navigate(user.must_change_password ? "/profil" : "/", { replace: true });
+    }
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
@@ -19,8 +21,8 @@ export default function Login() {
     setErreur("");
     setLoading(true);
     try {
-      await login(email, motDePasse);
-      navigate("/");
+      const me = await login(email, motDePasse);
+      navigate(me.must_change_password ? "/profil" : "/", { replace: true });
     } catch (err) {
       setErreur(err.message || "Identifiants incorrects.");
     } finally {

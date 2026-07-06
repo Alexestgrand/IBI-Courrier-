@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, exportRecherchePdf } from "../api/client";
+import { useToast } from "../context/ToastContext";
 import { BadgeStatut, formatDate } from "../utils";
 
 const FILTRES_STATUT = [
@@ -26,6 +27,7 @@ const URGENCES = [
 ];
 
 export default function Recherche() {
+  const { toast } = useToast();
   const [entites, setEntites] = useState([]);
   const [services, setServices] = useState([]);
   const [resultats, setResultats] = useState([]);
@@ -183,7 +185,11 @@ export default function Recherche() {
             <button
               className="btn btn-secondary"
               type="button"
-              onClick={() => exportRecherchePdf(derniersParams).catch((e) => alert(e.message))}
+              onClick={() =>
+                exportRecherchePdf(derniersParams)
+                  .then(() => toast("Export PDF téléchargé.", "success"))
+                  .catch((e) => toast(e.message, "error"))
+              }
             >
               Exporter PDF
             </button>

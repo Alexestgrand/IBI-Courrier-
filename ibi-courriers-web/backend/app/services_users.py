@@ -173,6 +173,7 @@ def reinitialiser_mot_de_passe(
         raise ValueError("Le mot de passe doit contenir au moins 6 caractères.")
 
     user.mot_de_passe = hasher_mot_de_passe(nouveau)
+    user.must_change_password = True
     enregistrer_audit(
         db, admin.id, "reinitialisation_mot_de_passe", f"Utilisateur {user.email}", "users"
     )

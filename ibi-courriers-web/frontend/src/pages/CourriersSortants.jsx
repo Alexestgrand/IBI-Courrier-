@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import Pagination from "../components/Pagination";
+import { useDebounce } from "../hooks/useDebounce";
 import { BadgeStatut, formatDate } from "../utils";
 
 const FILTRES_STATUT = [
@@ -12,33 +14,44 @@ const FILTRES_STATUT = [
   { label: "Archivé", value: "archive" },
 ];
 
+const PAGE_SIZE = 25;
+
 export default function CourriersSortants() {
   const [courriers, setCourriers] = useState([]);
+  const [meta, setMeta] = useState({ page: 1, pages: 1, total: 0 });
   const [entites, setEntites] = useState([]);
   const [statut, setStatut] = useState("");
   const [entiteId, setEntiteId] = useState("");
   const [recherche, setRecherche] = useState("");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const charger = () => {
-    setLoading(true);
-    api
-      .courriersSortants({
-        statut: statut || undefined,
-        entite_id: entiteId || undefined,
-        recherche: recherche || undefined,
-      })
-      .then(setCourriers)
-      .finally(() => setLoading(false));
-  };
+  const rechercheDebounced = useDebounce(recherche, 300);
 
   useEffect(() => {
     api.entites().then(setEntites);
   }, []);
 
   useEffect(() => {
-    charger();
-  }, [statut, entiteId]);
+    setPage(1);
+  }, [statut, entiteId, rechercheDebounced]);
+
+  useEffect(() => {
+    setLoading(true);
+    api
+      .courriersSortants({
+        statut: statut || undefined,
+        entite_id: entiteId || undefined,
+        recherche: rechercheDebounced || undefined,
+        page,
+        page_size: PAGE_SIZE,
+      })
+      .then((data) => {
+        setCourriers(data.items);
+        setMeta({ page: data.page, pages: data.pages, total: data.total });
+      })
+      .finally(() => setLoading(false));
+  }, [statut, entiteId, rechercheDebounced, page]);
 
   return (
     <div>
@@ -55,7 +68,6 @@ export default function CourriersSortants() {
           placeholder="Rechercher…"
           value={recherche}
           onChange={(e) => setRecherche(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && charger()}
         />
         <select value={statut} onChange={(e) => setStatut(e.target.value)}>
           {FILTRES_STATUT.map((f) => (
@@ -72,16 +84,22 @@ export default function CourriersSortants() {
             </option>
           ))}
         </select>
-        <button className="btn btn-secondary" onClick={charger}>
-          Filtrer
-        </button>
       </div>
 
       <div className="panel table-wrap">
         {loading ? (
           <p className="loading-text">Chargement…</p>
         ) : courriers.length === 0 ? (
-          <p className="empty-state">Aucun courrier sortant.</p>
+          <div className="empty-state">
+            <p>Aucun courrier sortant.</p>
+            <Link
+              to="/courriers/sortant/nouveau"
+              className="btn btn-primary"
+              style={{ marginTop: "0.75rem" }}
+            >
+              Créer un courrier sortant
+            </Link>
+          </div>
         ) : (
           <table>
             <thead>
@@ -115,6 +133,13 @@ export default function CourriersSortants() {
           </table>
         )}
       </div>
+
+      <Pagination
+        page={meta.page}
+        pages={meta.pages}
+        total={meta.total}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

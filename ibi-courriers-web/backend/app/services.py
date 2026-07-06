@@ -164,7 +164,12 @@ def lister_courriers(
     filtre_statut: str | None = None,
     recherche: str | None = None,
     entite_id: int | None = None,
-) -> list[dict]:
+    page: int = 1,
+    page_size: int = 25,
+) -> dict:
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+
     query = (
         db.query(Courrier)
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
@@ -184,8 +189,25 @@ def lister_courriers(
                 Courrier.destinataire.ilike(terme),
             )
         )
-    courriers = query.order_by(Courrier.created_at.desc()).all()
-    return [courrier_vers_liste(c) for c in courriers]
+
+    total = query.count()
+    pages = max(1, (total + page_size - 1) // page_size)
+    if page > pages:
+        page = pages
+
+    courriers = (
+        query.order_by(Courrier.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return {
+        "items": [courrier_vers_liste(c) for c in courriers],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
 
 
 async def creer_courrier_entrant(

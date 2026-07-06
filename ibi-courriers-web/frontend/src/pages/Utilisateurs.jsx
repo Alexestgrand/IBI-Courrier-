@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useToast } from "../context/ToastContext";
 import { formatDate } from "../utils";
 
 const ROLES = [
@@ -21,6 +22,7 @@ const FORM_VIDE = {
 };
 
 export default function Utilisateurs() {
+  const { toast } = useToast();
   const [users, setUsers] = useState([]);
   const [audit, setAudit] = useState([]);
   const [recherche, setRecherche] = useState("");
@@ -58,9 +60,11 @@ export default function Utilisateurs() {
           actif: form.actif,
         });
         setMessage("Utilisateur modifié.");
+        toast("Utilisateur modifié.", "success");
       } else {
         await api.creerUtilisateur(form);
         setMessage("Utilisateur créé.");
+        toast("Utilisateur créé.", "success");
       }
       resetForm();
       charger();
@@ -85,9 +89,9 @@ export default function Utilisateurs() {
     if (!confirm("Réinitialiser le mot de passe de cet utilisateur ?")) return;
     try {
       const res = await api.resetMotDePasse(id);
-      alert(`Nouveau mot de passe : ${res.mot_de_passe}`);
+      toast(`Nouveau mot de passe : ${res.mot_de_passe}`, "info", 8000);
     } catch (err) {
-      alert(err.message);
+      toast(err.message, "error");
     }
   };
 
@@ -95,8 +99,9 @@ export default function Utilisateurs() {
     try {
       await api.modifierUtilisateur(u.id, { actif: !u.actif });
       charger();
+      toast(u.actif ? "Utilisateur désactivé." : "Utilisateur activé.", "success");
     } catch (err) {
-      alert(err.message);
+      toast(err.message, "error");
     }
   };
 

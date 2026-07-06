@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, downloadPdf, downloadPiece } from "../api/client";
+import { useToast } from "../context/ToastContext";
 import { BadgeStatut, formatDate, formatTaille } from "../utils";
 
 const LIBELLES_STATUT = {
@@ -15,6 +16,7 @@ const MODIFIABLE = ["en_attente", "transmis"];
 
 export default function CourrierDetail() {
   const { id } = useParams();
+  const { toast } = useToast();
   const [courrier, setCourrier] = useState(null);
   const [historique, setHistorique] = useState([]);
   const [observation, setObservation] = useState("");
@@ -56,8 +58,10 @@ export default function CourrierDetail() {
       setObservation("");
       const h = await api.historique(id);
       setHistorique(h);
+      toast("Statut mis à jour.", "success");
     } catch (err) {
       setErreur(err.message);
+      toast(err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -70,8 +74,10 @@ export default function CourrierDetail() {
       const c = await api.modifierCourrier(id, form);
       setCourrier(c);
       setEdition(false);
+      toast("Courrier enregistré.", "success");
     } catch (err) {
       setErreur(err.message);
+      toast(err.message, "error");
     } finally {
       setLoading(false);
     }
@@ -95,7 +101,11 @@ export default function CourrierDetail() {
           {courrier.type === "sortant" && (
             <button
               className="btn btn-secondary"
-              onClick={() => downloadPdf(courrier.id, courrier.numero)}
+              onClick={() =>
+                downloadPdf(courrier.id, courrier.numero).catch((e) =>
+                  toast(e.message, "error")
+                )
+              }
             >
               Télécharger PDF
             </button>
@@ -224,7 +234,11 @@ export default function CourrierDetail() {
                 </span>
                 <button
                   className="btn btn-secondary btn-sm"
-                  onClick={() => downloadPiece(pj.id, pj.nom_original)}
+                  onClick={() =>
+                    downloadPiece(pj.id, pj.nom_original).catch((e) =>
+                      toast(e.message, "error")
+                    )
+                  }
                 >
                   Télécharger
                 </button>

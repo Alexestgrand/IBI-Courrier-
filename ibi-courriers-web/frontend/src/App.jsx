@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
@@ -14,14 +14,33 @@ import Profil from "./pages/Profil";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <p className="loading-text" style={{ padding: "2rem" }}>Chargement…</p>;
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <p className="loading-text" style={{ padding: "2rem" }}>
+        Chargement…
+      </p>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
+
+  if (user.must_change_password && location.pathname !== "/profil") {
+    return <Navigate to="/profil" replace state={{ forcePassword: true }} />;
+  }
+
   return children;
 }
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <p className="loading-text" style={{ padding: "2rem" }}>Chargement…</p>;
+  if (loading) {
+    return (
+      <p className="loading-text" style={{ padding: "2rem" }}>
+        Chargement…
+      </p>
+    );
+  }
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "admin") return <Navigate to="/" replace />;
   return children;
