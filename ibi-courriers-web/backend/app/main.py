@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine
-from app.routers import auth, courriers
+from app.routers import auth, courriers, search, users
 from app.seed import initialiser_donnees
 
 app = FastAPI(
@@ -26,6 +26,8 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(courriers.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
 
 
 @app.on_event("startup")

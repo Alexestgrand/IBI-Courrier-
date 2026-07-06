@@ -63,3 +63,12 @@ def obtenir_utilisateur_courant(
             detail="Utilisateur introuvable.",
         )
     return user
+
+
+def exiger_admin(user: User = Depends(obtenir_utilisateur_courant)) -> User:
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès réservé aux administrateurs.",
+        )
+    return user

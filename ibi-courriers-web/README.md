@@ -1,13 +1,16 @@
-# IBI Courriers Web (MVP v2)
+# IBI Courriers Web (v2)
 
 Application web de gestion des courriers pour le Groupe IBI — accès multi-utilisateurs via navigateur, hébergement cloud.
 
-## Fonctionnalités MVP
+## Fonctionnalités
 
 - Connexion sécurisée (JWT, sessions persistantes 8 h)
-- Courriers entrants : création, liste, fiche détaillée
-- **Pièces jointes multiples** à l'enregistrement (PDF, JPG, PNG, DOCX)
+- **Courriers entrants** : création, liste, fiche, modification, pièces jointes
+- **Courriers sortants** : création (saisie + PDF auto ou import PDF scanné), liste, téléchargement PDF
 - Workflow de validation par rôle (réception → transmis, DG → validé/rejeté)
+- **Recherche avancée** multi-critères (type, statut, service, urgence, dates, filiale)
+- **Gestion utilisateurs** (admin) : CRUD, activation, réinitialisation mot de passe, journal d'audit
+- **Profil** : changement de mot de passe
 - **8 filiales** visibles par tous : IBI, Thabor, Mamel, N'kafu, Lemetier, BAYI, comm'eve, Calao
 - **7 services** : Direction, Comptabilité, Service Marché, Facturation, DAF, Service Audit, Service Informatique
 - Tableau de bord avec statistiques par filiale
@@ -113,15 +116,33 @@ ibi-courriers-web/
 | POST | `/api/courriers/entrants` | Créer (multipart + fichiers) |
 | GET | `/api/courriers/{id}` | Détail |
 | PATCH | `/api/courriers/{id}/statut` | Changer statut |
-| GET | `/api/pieces-jointes/{id}/download` | Télécharger PJ |
+| PATCH | `/api/courriers/{id}` | Modifier courrier |
+| GET | `/api/courriers/sortants` | Liste sortants |
+| POST | `/api/courriers/sortants` | Créer sortant |
+| GET | `/api/courriers/{id}/pdf` | Télécharger PDF sortant |
+| GET | `/api/recherche` | Recherche avancée |
+| GET/POST/PATCH | `/api/users` | Gestion utilisateurs (admin) |
+| POST | `/api/auth/change-password` | Changer son mot de passe |
+| GET | `/api/audit` | Journal d'audit (admin) |
 
-## Prochaines étapes (hors MVP)
+## Sauvegardes automatiques
 
-- Courriers sortants + génération PDF
-- Modification d'un courrier existant
-- Gestion des utilisateurs (admin)
-- Recherche avancée
+```bash
+chmod +x scripts/backup.sh
+./scripts/backup.sh
+```
+
+Planifier avec cron (ex. chaque nuit à 2h) :
+
+```bash
+0 2 * * * /home/deploy/IBI-Courrier-/ibi-courriers-web/scripts/backup.sh >> /home/deploy/backups/backup.log 2>&1
+```
+
+## Prochaines étapes
+
+- Export PDF rapport de recherche
 - PWA (icône bureau)
+- Migration données desktop SQLite → PostgreSQL
 
 ## Application desktop (v1)
 

@@ -41,6 +41,15 @@ async function request(path, options = {}) {
   return response.json();
 }
 
+function buildQuery(params) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") qs.set(k, v);
+  });
+  const query = qs.toString();
+  return query ? `?${query}` : "";
+}
+
 export const api = {
   login: (email, mot_de_passe) =>
     request("/auth/login", {
@@ -50,20 +59,23 @@ export const api = {
 
   me: () => request("/auth/me"),
 
+  changePassword: (ancien_mot_de_passe, nouveau_mot_de_passe) =>
+    request("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ ancien_mot_de_passe, nouveau_mot_de_passe }),
+    }),
+
   stats: () => request("/dashboard/stats"),
 
   entites: () => request("/entites"),
 
   services: () => request("/services"),
 
-  courriersEntrants: (params = {}) => {
-    const qs = new URLSearchParams();
-    if (params.statut) qs.set("statut", params.statut);
-    if (params.recherche) qs.set("recherche", params.recherche);
-    if (params.entite_id) qs.set("entite_id", params.entite_id);
-    const query = qs.toString();
-    return request(`/courriers/entrants${query ? `?${query}` : ""}`);
-  },
+  courriersEntrants: (params = {}) =>
+    request(`/courriers/entrants${buildQuery(params)}`),
+
+  courriersSortants: (params = {}) =>
+    request(`/courriers/sortants${buildQuery(params)}`),
 
   courrier: (id) => request(`/courriers/${id}`),
 
@@ -72,21 +84,43 @@ export const api = {
   creerCourrierEntrant: (formData) =>
     request("/courriers/entrants", { method: "POST", body: formData }),
 
+  creerCourrierSortant: (formData) =>
+    request("/courriers/sortants", { method: "POST", body: formData }),
+
+  modifierCourrier: (id, data) =>
+    request(`/courriers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   changerStatut: (id, nouveau_statut, observation) =>
     request(`/courriers/${id}/statut`, {
       method: "PATCH",
       body: JSON.stringify({ nouveau_statut, observation }),
     }),
 
-  downloadUrl: (pieceId) => {
-    const token = getToken();
-    return `${API_BASE}/pieces-jointes/${pieceId}/download?token=${token}`;
-  },
+  recherche: (params = {}) => request(`/recherche${buildQuery(params)}`),
+
+  utilisateurs: (params = {}) => request(`/users${buildQuery(params)}`),
+
+  creerUtilisateur: (data) =>
+    request("/users", { method: "POST", body: JSON.stringify(data) }),
+
+  modifierUtilisateur: (id, data) =>
+    request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  resetMotDePasse: (id, mot_de_passe = null) =>
+    request(`/users/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ mot_de_passe }),
+    }),
+
+  audit: (params = {}) => request(`/audit${buildQuery(params)}`),
 };
 
-export function downloadPiece(pieceId, nom) {
+function downloadBlob(path, filename) {
   const token = getToken();
-  fetch(`${API_BASE}/pieces-jointes/${pieceId}/download`, {
+  return fetch(`${API_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then((r) => {
@@ -97,9 +131,26 @@ export function downloadPiece(pieceId, nom) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = nom;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-    })
-    .catch((e) => alert(e.message));
+    });
+}
+
+export function downloadPiece(pieceId, nom) {
+  downloadBlob(`/pieces-jointes/${pieceId}/download`, nom).catch((e) =>
+    alert(e.message)
+  );
+}
+
+export function downloadPdf(courrierId, numero) {
+  downloadBlob(`/courriers/${courrierId}/pdf`, `${numero}.pdf`).catch((e) =>
+    alert(e.message)
+  );
+}
+
+export function exportRecherchePdf(filtres) {
+  const qs = buildQuery(filtres);
+  const date = new Date().toISOString().slice(0, 10);
+  return downloadBlob(`/recherche/export-pdf${qs}`, `rapport_recherche_${date}.pdf`);
 }

@@ -12,7 +12,7 @@ from app.auth import (
 )
 from app.database import get_db
 from app.models import User
-from app.schemas import LoginRequest, TokenResponse, UserResponse
+from app.schemas import LoginRequest, TokenResponse, UserResponse, ChangePasswordRequest
 from app.services import enregistrer_audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -50,3 +50,27 @@ def login(data: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
 @router.get("/me", response_model=UserResponse)
 def me(user: User = Depends(obtenir_utilisateur_courant)) -> User:
     return user
+
+
+@router.post("/change-password")
+def change_password(
+    data: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(obtenir_utilisateur_courant),
+) -> dict[str, str]:
+    from app.auth import hasher_mot_de_passe
+
+    if not verifier_mot_de_passe(data.ancien_mot_de_passe, user.mot_de_passe):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ancien mot de passe incorrect.",
+        )
+    if len(data.nouveau_mot_de_passe) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le nouveau mot de passe doit contenir au moins 6 caractères.",
+        )
+    user.mot_de_passe = hasher_mot_de_passe(data.nouveau_mot_de_passe)
+    enregistrer_audit(db, user.id, "changement_mot_de_passe", user.email, "auth")
+    db.commit()
+    return {"message": "Mot de passe modifié."}

@@ -13,6 +13,7 @@ from app.schemas import (
     ChangementStatutRequest,
     CourrierDetail,
     CourrierListItem,
+    CourrierUpdateRequest,
     DashboardStats,
     EntiteResponse,
     ServiceResponse,
@@ -22,9 +23,11 @@ from app.services import (
     changer_statut_courrier,
     courrier_vers_detail,
     creer_courrier_entrant,
+    creer_courrier_sortant,
     lister_courriers,
     lister_entites,
     lister_services,
+    modifier_courrier,
     obtenir_historique,
     stats_dashboard,
 )
@@ -54,6 +57,56 @@ def get_stats(
     _: User = Depends(obtenir_utilisateur_courant),
 ):
     return stats_dashboard(db)
+
+
+@router.get("/courriers/sortants", response_model=list[CourrierListItem])
+def get_courriers_sortants(
+    statut: str | None = None,
+    recherche: str | None = None,
+    entite_id: int | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(obtenir_utilisateur_courant),
+):
+    return lister_courriers(db, "sortant", statut, recherche, entite_id)
+
+
+@router.post("/courriers/sortants", response_model=CourrierDetail, status_code=201)
+async def post_courrier_sortant(
+    entite_id: int = Form(...),
+    destinataire: str = Form(...),
+    objet: str = Form(...),
+    service_emetteur: str = Form(...),
+    adresse_destinataire: str | None = Form(None),
+    urgence: str = Form("normal"),
+    observations: str | None = Form(None),
+    corps_courrier: str | None = Form(None),
+    pdf_scanne: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(obtenir_utilisateur_courant),
+):
+    try:
+        courrier = await creer_courrier_sortant(
+            db,
+            user,
+            entite_id,
+            destinataire,
+            objet,
+            service_emetteur,
+            adresse_destinataire,
+            urgence,
+            observations,
+            corps_courrier,
+            pdf_scanne,
+        )
+        courrier = (
+            db.query(Courrier)
+            .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+            .filter(Courrier.id == courrier.id)
+            .first()
+        )
+        return courrier_vers_detail(courrier, user.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/courriers/entrants", response_model=list[CourrierListItem])
@@ -123,6 +176,21 @@ def get_courrier(
     return courrier_vers_detail(courrier, user.role)
 
 
+@router.patch("/courriers/{courrier_id}", response_model=CourrierDetail)
+def patch_courrier(
+    courrier_id: int,
+    data: CourrierUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(obtenir_utilisateur_courant),
+):
+    try:
+        champs = data.model_dump(exclude_unset=True)
+        courrier = modifier_courrier(db, user, courrier_id, champs)
+        return courrier_vers_detail(courrier, user.role)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.patch("/courriers/{courrier_id}/statut", response_model=CourrierDetail)
 def patch_statut(
     courrier_id: int,
@@ -146,6 +214,42 @@ def get_historique(
     _: User = Depends(obtenir_utilisateur_courant),
 ):
     return obtenir_historique(db, courrier_id)
+
+
+@router.get("/courriers/{courrier_id}/pdf")
+def download_pdf_courrier(
+    courrier_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(obtenir_utilisateur_courant),
+):
+    courrier = (
+        db.query(Courrier)
+        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .filter(Courrier.id == courrier_id)
+        .first()
+    )
+    if courrier is None:
+        raise HTTPException(status_code=404, detail="Courrier introuvable.")
+    if courrier.type != "sortant":
+        raise HTTPException(status_code=400, detail="PDF disponible uniquement pour les sortants.")
+
+    chemin = courrier.chemin_pdf
+    if not chemin or not os.path.isfile(chemin):
+        from app.config import settings
+        from app.pdf_export import generer_pdf_sortant
+
+        exports_dir = os.path.join(settings.upload_dir, "exports")
+        os.makedirs(exports_dir, exist_ok=True)
+        chemin = os.path.join(exports_dir, f"{courrier.numero}.pdf")
+        generer_pdf_sortant(courrier_vers_detail(courrier, user.role), chemin)
+        courrier.chemin_pdf = chemin
+        db.commit()
+
+    return FileResponse(
+        chemin,
+        filename=f"{courrier.numero}.pdf",
+        media_type="application/pdf",
+    )
 
 
 @router.get("/pieces-jointes/{piece_id}/download")

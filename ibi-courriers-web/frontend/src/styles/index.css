@@ -457,6 +457,12 @@ textarea {
 }
 
 /* ─── Formulaires ─── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0 1rem;
+}
+
 .form-group {
   margin-bottom: 1.1rem;
 }
@@ -603,6 +609,21 @@ tbody tr:last-child td {
   padding: 2.5rem 2.25rem;
   border-radius: var(--rayon-xl);
   text-align: center;
+}
+
+.login-card__logo-img {
+  width: 120px;
+  height: auto;
+  margin: 0 auto 1.25rem;
+  display: block;
+  object-fit: contain;
+}
+
+.sidebar-pill__logo-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
 .login-card__logo {

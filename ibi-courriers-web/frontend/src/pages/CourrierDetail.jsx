@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, downloadPiece } from "../api/client";
+import { api, downloadPdf, downloadPiece } from "../api/client";
 import { BadgeStatut, formatDate, formatTaille } from "../utils";
 
 const LIBELLES_STATUT = {
@@ -11,6 +11,8 @@ const LIBELLES_STATUT = {
   archive: "Archivé",
 };
 
+const MODIFIABLE = ["en_attente", "transmis"];
+
 export default function CourrierDetail() {
   const { id } = useParams();
   const [courrier, setCourrier] = useState(null);
@@ -18,11 +20,26 @@ export default function CourrierDetail() {
   const [observation, setObservation] = useState("");
   const [erreur, setErreur] = useState("");
   const [loading, setLoading] = useState(false);
+  const [edition, setEdition] = useState(false);
+  const [form, setForm] = useState({});
 
   const charger = () => {
     Promise.all([api.courrier(id), api.historique(id)]).then(([c, h]) => {
       setCourrier(c);
       setHistorique(h);
+      setForm({
+        expediteur: c.expediteur || "",
+        objet: c.objet || "",
+        service_destinataire: c.service_destinataire || "",
+        date_reception: c.date_reception || "",
+        reference_document: c.reference_document || "",
+        urgence: c.urgence || "normal",
+        observations: c.observations || "",
+        destinataire: c.destinataire || "",
+        adresse_destinataire: c.adresse_destinataire || "",
+        service_emetteur: c.service_emetteur || "",
+        corps_courrier: c.corps_courrier || "",
+      });
     });
   };
 
@@ -46,39 +63,155 @@ export default function CourrierDetail() {
     }
   };
 
+  const sauvegarder = async () => {
+    setErreur("");
+    setLoading(true);
+    try {
+      const c = await api.modifierCourrier(id, form);
+      setCourrier(c);
+      setEdition(false);
+    } catch (err) {
+      setErreur(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!courrier) return <p>Chargement…</p>;
+
+  const listeRetour =
+    courrier.type === "sortant" ? "/courriers/sortants" : "/courriers/entrants";
+  const peutModifier = MODIFIABLE.includes(courrier.statut);
 
   return (
     <div>
-      <Link to="/courriers/entrants" style={{ color: "var(--texte-secondaire)" }}>
+      <Link to={listeRetour} style={{ color: "var(--texte-secondaire)" }}>
         ← Retour à la liste
       </Link>
-      <h2 className="page-title" style={{ marginTop: "0.75rem" }}>
-        {courrier.numero}
-      </h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem" }}>
+        <h2 className="page-title" style={{ margin: 0 }}>
+          {courrier.numero}
+        </h2>
+        <div className="actions-row">
+          {courrier.type === "sortant" && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => downloadPdf(courrier.id, courrier.numero)}
+            >
+              Télécharger PDF
+            </button>
+          )}
+          {peutModifier && !edition && (
+            <button className="btn btn-secondary" onClick={() => setEdition(true)}>
+              Modifier
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="card glass-inner">
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
           <BadgeStatut statut={courrier.statut} />
-          <span style={{ color: "var(--texte-secondaire)" }}>{courrier.entite_nom}</span>
+          <span style={{ color: "var(--texte-secondaire)" }}>
+            {courrier.entite_nom} — {courrier.type === "entrant" ? "Entrant" : "Sortant"}
+          </span>
         </div>
 
-        <dl className="detail-grid">
-          <dt>Expéditeur</dt>
-          <dd>{courrier.expediteur}</dd>
-          <dt>Objet</dt>
-          <dd>{courrier.objet}</dd>
-          <dt>Service destinataire</dt>
-          <dd>{courrier.service_destinataire}</dd>
-          <dt>Date réception</dt>
-          <dd>{courrier.date_reception || "—"}</dd>
-          <dt>Référence</dt>
-          <dd>{courrier.reference_document || "—"}</dd>
-          <dt>Urgence</dt>
-          <dd>{courrier.urgence}</dd>
-          <dt>Observations</dt>
-          <dd>{courrier.observations || "—"}</dd>
-        </dl>
+        {edition ? (
+          <div className="form-grid">
+            {courrier.type === "entrant" ? (
+              <>
+                <div className="form-group">
+                  <label>Expéditeur</label>
+                  <input value={form.expediteur} onChange={(e) => setForm({ ...form, expediteur: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Service destinataire</label>
+                  <input value={form.service_destinataire} onChange={(e) => setForm({ ...form, service_destinataire: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Date réception</label>
+                  <input value={form.date_reception} onChange={(e) => setForm({ ...form, date_reception: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Référence</label>
+                  <input value={form.reference_document} onChange={(e) => setForm({ ...form, reference_document: e.target.value })} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label>Destinataire</label>
+                  <input value={form.destinataire} onChange={(e) => setForm({ ...form, destinataire: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Service émetteur</label>
+                  <input value={form.service_emetteur} onChange={(e) => setForm({ ...form, service_emetteur: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>Adresse</label>
+                  <textarea value={form.adresse_destinataire} onChange={(e) => setForm({ ...form, adresse_destinataire: e.target.value })} rows={2} />
+                </div>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>Corps</label>
+                  <textarea value={form.corps_courrier} onChange={(e) => setForm({ ...form, corps_courrier: e.target.value })} rows={6} />
+                </div>
+              </>
+            )}
+            <div className="form-group">
+              <label>Objet</label>
+              <input value={form.objet} onChange={(e) => setForm({ ...form, objet: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label>Urgence</label>
+              <input value={form.urgence} onChange={(e) => setForm({ ...form, urgence: e.target.value })} />
+            </div>
+            <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+              <label>Observations</label>
+              <textarea value={form.observations} onChange={(e) => setForm({ ...form, observations: e.target.value })} rows={2} />
+            </div>
+            <div className="actions-row" style={{ gridColumn: "1 / -1" }}>
+              <button className="btn btn-primary" onClick={sauvegarder} disabled={loading}>
+                Enregistrer
+              </button>
+              <button className="btn btn-secondary" onClick={() => setEdition(false)}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        ) : (
+          <dl className="detail-grid">
+            {courrier.type === "entrant" ? (
+              <>
+                <dt>Expéditeur</dt>
+                <dd>{courrier.expediteur}</dd>
+                <dt>Service destinataire</dt>
+                <dd>{courrier.service_destinataire}</dd>
+                <dt>Date réception</dt>
+                <dd>{courrier.date_reception || "—"}</dd>
+                <dt>Référence</dt>
+                <dd>{courrier.reference_document || "—"}</dd>
+              </>
+            ) : (
+              <>
+                <dt>Destinataire</dt>
+                <dd>{courrier.destinataire}</dd>
+                <dt>Adresse</dt>
+                <dd>{courrier.adresse_destinataire || "—"}</dd>
+                <dt>Service émetteur</dt>
+                <dd>{courrier.service_emetteur}</dd>
+                <dt>Corps</dt>
+                <dd style={{ whiteSpace: "pre-wrap" }}>{courrier.corps_courrier || "—"}</dd>
+              </>
+            )}
+            <dt>Objet</dt>
+            <dd>{courrier.objet}</dd>
+            <dt>Urgence</dt>
+            <dd>{courrier.urgence}</dd>
+            <dt>Observations</dt>
+            <dd>{courrier.observations || "—"}</dd>
+          </dl>
+        )}
       </div>
 
       {courrier.pieces_jointes?.length > 0 && (

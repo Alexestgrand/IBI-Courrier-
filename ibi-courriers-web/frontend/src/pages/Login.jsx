@@ -31,7 +31,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card glass-panel">
-        <div className="login-card__logo">I</div>
+        <img src="/logo-ibi.png" alt="Groupe IBI" className="login-card__logo-img" />
         <h1>IBI COURRIERS</h1>
         <p className="subtitle">Groupe IBI — Gestion des courriers</p>
         <form onSubmit={handleSubmit}>

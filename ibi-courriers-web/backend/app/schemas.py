@@ -104,6 +104,7 @@ class CourrierDetail(BaseModel):
     urgence: str
     statut: str
     observations: str | None
+    chemin_pdf: str | None = None
     pieces_jointes: list[PieceJointeResponse] = Field(default_factory=list)
     statuts_possibles: list[str] = Field(default_factory=list)
     created_at: datetime
@@ -123,3 +124,65 @@ class DashboardStats(BaseModel):
     transmis: int
     valides: int
     par_entite: dict[str, int]
+
+
+class UserCreateRequest(BaseModel):
+    nom: str
+    prenom: str
+    email: EmailStr
+    role: str
+    mot_de_passe: str
+    actif: bool = True
+
+
+class UserUpdateRequest(BaseModel):
+    nom: str | None = None
+    prenom: str | None = None
+    email: EmailStr | None = None
+    role: str | None = None
+    actif: bool | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    mot_de_passe: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    ancien_mot_de_passe: str
+    nouveau_mot_de_passe: str
+
+
+class CourrierUpdateRequest(BaseModel):
+    expediteur: str | None = None
+    objet: str | None = None
+    service_destinataire: str | None = None
+    date_reception: str | None = None
+    reference_document: str | None = None
+    urgence: str | None = None
+    observations: str | None = None
+    destinataire: str | None = None
+    adresse_destinataire: str | None = None
+    service_emetteur: str | None = None
+    corps_courrier: str | None = None
+
+
+class RechercheRequest(BaseModel):
+    mot_cle: str | None = None
+    type_courrier: str | None = None
+    statut: str | None = None
+    service: str | None = None
+    urgence: str | None = None
+    entite_id: int | None = None
+    date_debut: str | None = None
+    date_fin: str | None = None
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    action: str
+    detail: str | None
+    module: str | None
+    date: datetime
+    utilisateur_nom: str | None = None
+
+    model_config = {"from_attributes": True}
