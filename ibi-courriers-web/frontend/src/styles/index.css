@@ -820,7 +820,28 @@ tbody tr:last-child td {
 }
 
 /* ─── Responsive ─── */
+.stats-grid--5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.toolbar-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toolbar-checkbox input {
+  accent-color: var(--accent);
+}
+
 @media (max-width: 900px) {
+  .stats-grid--5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .app-shell {
     flex-direction: column;
   }

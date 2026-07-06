@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth import (
@@ -13,13 +13,19 @@ from app.auth import (
 from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, TokenResponse, UserResponse, ChangePasswordRequest
+from app.rate_limit import verifier_rate_limit_login
 from app.services import enregistrer_audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(data: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def login(
+    data: LoginRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    verifier_rate_limit_login(request)
     user = (
         db.query(User)
         .filter(User.email.ilike(data.email.strip()), User.actif.is_(True))

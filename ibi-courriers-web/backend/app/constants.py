@@ -47,6 +47,16 @@ ROLES_VALIDES = (
     "achat",
 )
 
+ROLE_SERVICE_MAP = {
+    "comptabilite": "Comptabilité",
+    "marche": "Service Marché",
+    "achat": "DAF",
+}
+
+
+def service_pour_role(role: str) -> str | None:
+    return ROLE_SERVICE_MAP.get(role)
+
 URGENCES_VALIDES = ("normal", "urgent", "très urgent")
 
 EXTENSIONS_AUTORISEES = {".pdf", ".jpg", ".jpeg", ".png", ".docx"}

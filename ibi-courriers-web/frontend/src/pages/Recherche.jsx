@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, exportRecherchePdf } from "../api/client";
+import { api, exportRechercheCsv, exportRecherchePdf } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { BadgeStatut, formatDate } from "../utils";
 
@@ -182,6 +182,7 @@ export default function Recherche() {
             {loading ? "Recherche…" : "Rechercher"}
           </button>
           {resultats.length > 0 && (
+            <>
             <button
               className="btn btn-secondary"
               type="button"
@@ -193,6 +194,18 @@ export default function Recherche() {
             >
               Exporter PDF
             </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() =>
+                exportRechercheCsv(derniersParams)
+                  .then(() => toast("Export CSV téléchargé.", "success"))
+                  .catch((e) => toast(e.message, "error"))
+              }
+            >
+              Exporter CSV
+            </button>
+            </>
           )}
         </div>
         {erreur && (

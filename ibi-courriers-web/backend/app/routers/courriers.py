@@ -65,13 +65,24 @@ def get_courriers_sortants(
     statut: str | None = None,
     recherche: str | None = None,
     entite_id: int | None = None,
+    service: str | None = None,
+    mon_service: bool = False,
     page: int = 1,
     page_size: int = 25,
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(obtenir_utilisateur_courant),
 ):
     return lister_courriers(
-        db, "sortant", statut, recherche, entite_id, page, page_size
+        db,
+        "sortant",
+        statut,
+        recherche,
+        entite_id,
+        service,
+        mon_service,
+        user.role,
+        page,
+        page_size,
     )
 
 
@@ -119,13 +130,24 @@ def get_courriers_entrants(
     statut: str | None = None,
     recherche: str | None = None,
     entite_id: int | None = None,
+    service: str | None = None,
+    mon_service: bool = False,
     page: int = 1,
     page_size: int = 25,
     db: Session = Depends(get_db),
-    _: User = Depends(obtenir_utilisateur_courant),
+    user: User = Depends(obtenir_utilisateur_courant),
 ):
     return lister_courriers(
-        db, "entrant", statut, recherche, entite_id, page, page_size
+        db,
+        "entrant",
+        statut,
+        recherche,
+        entite_id,
+        service,
+        mon_service,
+        user.role,
+        page,
+        page_size,
     )
 
 
@@ -258,6 +280,23 @@ def download_pdf_courrier(
         chemin,
         filename=f"{courrier.numero}.pdf",
         media_type="application/pdf",
+    )
+
+
+@router.get("/pieces-jointes/{piece_id}/view")
+def view_piece_jointe(
+    piece_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(obtenir_utilisateur_courant),
+):
+    pj = db.query(PieceJointe).filter(PieceJointe.id == piece_id).first()
+    if pj is None or not os.path.isfile(pj.chemin_stockage):
+        raise HTTPException(status_code=404, detail="Fichier introuvable.")
+    return FileResponse(
+        pj.chemin_stockage,
+        filename=pj.nom_original,
+        media_type=pj.type_mime or "application/octet-stream",
+        content_disposition_type="inline",
     )
 
 

@@ -15,6 +15,7 @@ from app.constants import (
     TRANSITIONS_PAR_ROLE,
     TRANSITIONS_VALIDES,
     URGENCES_VALIDES,
+    service_pour_role,
 )
 from app.models import AuditLog, Courrier, Entite, PieceJointe, Service, StatutLog, User
 
@@ -164,6 +165,9 @@ def lister_courriers(
     filtre_statut: str | None = None,
     recherche: str | None = None,
     entite_id: int | None = None,
+    service: str | None = None,
+    mon_service: bool = False,
+    role_utilisateur: str | None = None,
     page: int = 1,
     page_size: int = 25,
 ) -> dict:
@@ -179,6 +183,16 @@ def lister_courriers(
         query = query.filter(Courrier.statut == filtre_statut)
     if entite_id:
         query = query.filter(Courrier.entite_id == entite_id)
+
+    filtre_service = service
+    if mon_service and not filtre_service and role_utilisateur:
+        filtre_service = service_pour_role(role_utilisateur)
+    if filtre_service:
+        if type_courrier == "entrant":
+            query = query.filter(Courrier.service_destinataire == filtre_service)
+        else:
+            query = query.filter(Courrier.service_emetteur == filtre_service)
+
     if recherche:
         terme = f"%{recherche.strip()}%"
         query = query.filter(
@@ -272,6 +286,14 @@ async def creer_courrier_entrant(
     )
     db.commit()
     db.refresh(courrier)
+
+    from app.email_service import notifier_courrier_entrant
+
+    try:
+        notifier_courrier_entrant(db, courrier)
+    except Exception:
+        pass
+
     return courrier
 
 
@@ -360,6 +382,15 @@ def stats_dashboard(db: Session) -> dict:
     valides = (
         db.query(func.count(Courrier.id)).filter(Courrier.statut == "valide").scalar() or 0
     )
+    urgents = (
+        db.query(func.count(Courrier.id))
+        .filter(
+            Courrier.urgence.in_(("urgent", "très urgent")),
+            Courrier.statut.in_(("en_attente", "transmis")),
+        )
+        .scalar()
+        or 0
+    )
 
     par_entite_rows = (
         db.query(Entite.nom, func.count(Courrier.id))
@@ -369,12 +400,22 @@ def stats_dashboard(db: Session) -> dict:
     )
     par_entite = {nom: count for nom, count in par_entite_rows}
 
+    recents_rows = (
+        db.query(Courrier)
+        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .order_by(Courrier.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
     return {
         "total_courriers": total,
         "en_attente": en_attente,
         "transmis": transmis,
         "valides": valides,
+        "urgents": urgents,
         "par_entite": par_entite,
+        "recents": [courrier_vers_liste(c) for c in recents_rows],
     }
 
 

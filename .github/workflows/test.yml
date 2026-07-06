@@ -1,0 +1,47 @@
+name: Tests backend
+
+on:
+  push:
+    branches: [main, staging]
+    paths:
+      - "ibi-courriers-web/backend/**"
+      - "ibi-courriers-web/frontend/**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    paths:
+      - "ibi-courriers-web/**"
+
+jobs:
+  test-backend:
+    name: Tests API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installer les dépendances
+        run: pip install -r ibi-courriers-web/backend/requirements.txt
+
+      - name: Lancer pytest
+        working-directory: ibi-courriers-web/backend
+        env:
+          DATABASE_URL: sqlite:///:memory:
+          SECRET_KEY: test-secret-key
+        run: PYTHONPATH=. pytest tests/ -q
+
+  build-frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build
+        working-directory: ibi-courriers-web/frontend
+        run: npm ci && npm run build

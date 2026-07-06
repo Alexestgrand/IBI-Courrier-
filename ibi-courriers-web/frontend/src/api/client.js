@@ -44,7 +44,12 @@ async function request(path, options = {}) {
 function buildQuery(params) {
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== "") qs.set(k, v);
+    if (v === undefined || v === null || v === "") return;
+    if (typeof v === "boolean") {
+      if (v) qs.set(k, "true");
+      return;
+    }
+    qs.set(k, v);
   });
   const query = qs.toString();
   return query ? `?${query}` : "";
@@ -149,4 +154,23 @@ export function exportRecherchePdf(filtres) {
   const qs = buildQuery(filtres);
   const date = new Date().toISOString().slice(0, 10);
   return downloadBlob(`/recherche/export-pdf${qs}`, `rapport_recherche_${date}.pdf`);
+}
+
+export function exportRechercheCsv(filtres) {
+  const qs = buildQuery(filtres);
+  const date = new Date().toISOString().slice(0, 10);
+  return downloadBlob(`/recherche/export-csv${qs}`, `rapport_recherche_${date}.csv`);
+}
+
+export function previewPiece(pieceId) {
+  const token = getToken();
+  const url = `${API_BASE}/pieces-jointes/${pieceId}/view`;
+  return fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then((r) => {
+    if (!r.ok) throw new Error("Prévisualisation impossible");
+    return r.blob();
+  }).then((blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    window.open(objectUrl, "_blank", "noopener,noreferrer");
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+  });
 }

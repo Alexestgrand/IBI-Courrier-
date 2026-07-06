@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import Pagination from "../components/Pagination";
+import { useAuth } from "../context/AuthContext";
 import { useDebounce } from "../hooks/useDebounce";
-import { BadgeStatut, formatDate } from "../utils";
+import { BadgeStatut, formatDate, servicePourRole } from "../utils";
 
 const FILTRES_STATUT = [
   { label: "Tous", value: "" },
@@ -17,12 +18,15 @@ const FILTRES_STATUT = [
 const PAGE_SIZE = 25;
 
 export default function CourriersSortants() {
+  const { user } = useAuth();
+  const aUnService = Boolean(servicePourRole(user?.role));
   const [courriers, setCourriers] = useState([]);
   const [meta, setMeta] = useState({ page: 1, pages: 1, total: 0 });
   const [entites, setEntites] = useState([]);
   const [statut, setStatut] = useState("");
   const [entiteId, setEntiteId] = useState("");
   const [recherche, setRecherche] = useState("");
+  const [monService, setMonService] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +38,7 @@ export default function CourriersSortants() {
 
   useEffect(() => {
     setPage(1);
-  }, [statut, entiteId, rechercheDebounced]);
+  }, [statut, entiteId, rechercheDebounced, monService]);
 
   useEffect(() => {
     setLoading(true);
@@ -43,6 +47,7 @@ export default function CourriersSortants() {
         statut: statut || undefined,
         entite_id: entiteId || undefined,
         recherche: rechercheDebounced || undefined,
+        mon_service: monService || undefined,
         page,
         page_size: PAGE_SIZE,
       })
@@ -51,7 +56,7 @@ export default function CourriersSortants() {
         setMeta({ page: data.page, pages: data.pages, total: data.total });
       })
       .finally(() => setLoading(false));
-  }, [statut, entiteId, rechercheDebounced, page]);
+  }, [statut, entiteId, rechercheDebounced, monService, page]);
 
   return (
     <div>
@@ -84,6 +89,16 @@ export default function CourriersSortants() {
             </option>
           ))}
         </select>
+        {aUnService && (
+          <label className="toolbar-checkbox">
+            <input
+              type="checkbox"
+              checked={monService}
+              onChange={(e) => setMonService(e.target.checked)}
+            />
+            Mon service
+          </label>
+        )}
       </div>
 
       <div className="panel table-wrap">

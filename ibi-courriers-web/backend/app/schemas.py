@@ -133,7 +133,9 @@ class DashboardStats(BaseModel):
     en_attente: int
     transmis: int
     valides: int
+    urgents: int = 0
     par_entite: dict[str, int]
+    recents: list[CourrierListItem] = Field(default_factory=list)
 
 
 class UserCreateRequest(BaseModel):

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, downloadPdf, downloadPiece } from "../api/client";
+import { api, downloadPdf, downloadPiece, previewPiece } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { BadgeStatut, formatDate, formatTaille } from "../utils";
 
@@ -232,16 +232,27 @@ export default function CourrierDetail() {
                 <span>
                   {pj.nom_original} ({formatTaille(pj.taille_octets)})
                 </span>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={() =>
-                    downloadPiece(pj.id, pj.nom_original).catch((e) =>
-                      toast(e.message, "error")
-                    )
-                  }
-                >
+                <div className="actions-row" style={{ marginTop: 0, gap: "0.35rem" }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={() =>
+                      previewPiece(pj.id).catch((e) => toast(e.message, "error"))
+                    }
+                  >
+                    Voir
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      downloadPiece(pj.id, pj.nom_original).catch((e) =>
+                        toast(e.message, "error")
+                      )
+                    }
+                  >
                   Télécharger
                 </button>
+                </div>
               </li>
             ))}
           </ul>

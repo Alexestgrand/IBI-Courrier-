@@ -1,3 +1,13 @@
+const ROLE_SERVICE = {
+  comptabilite: "Comptabilité",
+  marche: "Service Marché",
+  achat: "DAF",
+};
+
+export function servicePourRole(role) {
+  return ROLE_SERVICE[role] || null;
+}
+
 const LIBELLES = {
   en_attente: "En attente",
   transmis: "Transmis",

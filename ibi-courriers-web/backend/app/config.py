@@ -13,6 +13,19 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     environment: str = "development"
 
+    smtp_enabled: bool = False
+    smtp_host: str = "smtp.mail.ovh.net"
+    smtp_port: int = 587
+    smtp_use_tls: bool = True
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "courriers@ibi.ci"
+    notify_emails: str = ""
+
+    @property
+    def notify_emails_list(self) -> list[str]:
+        return [e.strip() for e in self.notify_emails.split(",") if e.strip()]
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

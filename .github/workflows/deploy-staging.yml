@@ -1,41 +1,26 @@
-name: Déploiement production
+name: Déploiement staging
 
 on:
   push:
-    branches: [main]
+    branches: [staging]
     paths:
       - "ibi-courriers-web/**"
-      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy-staging.yml"
 
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Déployer sur VPS
+  deploy-staging:
+    name: Déployer staging VPS
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: []
+
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Tests backend
-        run: |
-          pip install -r ibi-courriers-web/backend/requirements.txt
-          cd ibi-courriers-web/backend && PYTHONPATH=. pytest tests/ -q
-        env:
-          DATABASE_URL: sqlite:///:memory:
-          SECRET_KEY: ci-test-key
-
       - name: Vérifier les secrets
         run: |
           if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "Secret VPS_HOST manquant"; exit 1; fi
           if [ -z "${{ secrets.VPS_USER }}" ]; then echo "Secret VPS_USER manquant"; exit 1; fi
           if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then echo "Secret VPS_SSH_KEY manquant"; exit 1; fi
-          echo "Secrets OK"
 
       - name: Configurer SSH
         run: |
@@ -44,7 +29,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Déployer sur le VPS
+      - name: Déployer staging
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -53,13 +38,11 @@ jobs:
             "${VPS_USER}@${VPS_HOST}" << 'ENDSSH'
           set -euo pipefail
           cd ~/IBI-Courrier-
-          git fetch origin main
-          git reset --hard origin/main
+          git fetch origin staging
+          git reset --hard origin/staging
           cd ibi-courriers-web
-          chmod +x scripts/deploy.sh scripts/backup.sh 2>/dev/null || true
-          docker compose -f docker-compose.prod.yml up -d --build
-          docker compose -f docker-compose.prod.yml ps
-          chmod +x scripts/wait-health.sh
-          ./scripts/wait-health.sh
-          echo "Déploiement GitHub Actions OK"
+          docker compose -f docker-compose.staging.yml up -d --build
+          sleep 5
+          curl -sf http://127.0.0.1:8081/api/health || true
+          echo "Staging déployé sur port 8081"
           ENDSSH

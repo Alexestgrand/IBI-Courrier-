@@ -1,9 +1,11 @@
 """Routes recherche avancée."""
 
+import csv
+import io
 import os
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth import exiger_admin, obtenir_utilisateur_courant
@@ -100,6 +102,79 @@ def export_recherche_pdf(
         chemin,
         filename=f"rapport_recherche_{os.path.basename(chemin)}",
         media_type="application/pdf",
+    )
+
+
+@router.get("/recherche/export-csv")
+def export_recherche_csv(
+    mot_cle: str | None = None,
+    type_courrier: str | None = None,
+    statut: str | None = None,
+    service: str | None = None,
+    urgence: str | None = None,
+    entite_id: int | None = None,
+    date_debut: str | None = None,
+    date_fin: str | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(obtenir_utilisateur_courant),
+):
+    resultats = _executer_recherche(
+        db,
+        mot_cle=mot_cle,
+        type_courrier=type_courrier,
+        statut=statut,
+        service=service,
+        urgence=urgence,
+        entite_id=entite_id,
+        date_debut=date_debut,
+        date_fin=date_fin,
+    )
+    if not resultats:
+        raise HTTPException(status_code=400, detail="Aucun résultat à exporter.")
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";")
+    writer.writerow(
+        [
+            "Numéro",
+            "Type",
+            "Contact",
+            "Objet",
+            "Service",
+            "Urgence",
+            "Statut",
+            "Date",
+        ]
+    )
+    for c in resultats:
+        contact = c.get("expediteur") if c.get("type") == "entrant" else c.get("destinataire")
+        writer.writerow(
+            [
+                c.get("numero"),
+                c.get("type"),
+                contact,
+                c.get("objet"),
+                c.get("service_destinataire") or c.get("service_emetteur"),
+                c.get("urgence"),
+                c.get("statut"),
+                c.get("created_at"),
+            ]
+        )
+
+    enregistrer_audit(
+        db,
+        user.id,
+        "export_csv_recherche",
+        f"{len(resultats)} courrier(s)",
+        "recherche",
+    )
+    db.commit()
+
+    contenu = buffer.getvalue()
+    return StreamingResponse(
+        iter([contenu]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=rapport_recherche.csv"},
     )
 
 
