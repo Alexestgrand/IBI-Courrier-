@@ -125,6 +125,38 @@ ibi-courriers-web/
 | POST | `/api/auth/change-password` | Changer son mot de passe |
 | GET | `/api/audit` | Journal d'audit (admin) |
 
+## Déploiement automatique (GitHub Actions)
+
+Chaque `push` sur `main` qui modifie `ibi-courriers-web/` déclenche un déploiement automatique sur le VPS.
+
+### 1. Créer une clé SSH pour GitHub Actions (sur le VPS)
+
+```bash
+ssh deploy@VOTRE_IP
+ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions -N ""
+cat ~/.ssh/github_actions.pub >> ~/.ssh/authorized_keys
+cat ~/.ssh/github_actions   # copier la clé PRIVÉE
+```
+
+### 2. Ajouter les secrets GitHub
+
+Dans le dépôt GitHub → **Settings → Secrets and variables → Actions** :
+
+| Secret | Valeur |
+|--------|--------|
+| `VPS_HOST` | `187.124.49.6` |
+| `VPS_USER` | `deploy` |
+| `VPS_SSH_KEY` | contenu de `~/.ssh/github_actions` (clé privée) |
+
+### 3. Déploiement manuel (si besoin)
+
+```bash
+cd ~/IBI-Courrier-/ibi-courriers-web
+./scripts/deploy.sh
+```
+
+En cas de conflit git sur le serveur : le script fait `git reset --hard origin/main`.
+
 ## Sauvegardes automatiques
 
 ```bash
@@ -138,11 +170,14 @@ Planifier avec cron (ex. chaque nuit à 2h) :
 0 2 * * * /home/deploy/IBI-Courrier-/ibi-courriers-web/scripts/backup.sh >> /home/deploy/backups/backup.log 2>&1
 ```
 
-## Prochaines étapes
+## Migration desktop → web
 
-- Export PDF rapport de recherche
-- PWA (icône bureau)
-- Migration données desktop SQLite → PostgreSQL
+```bash
+docker compose -f docker-compose.prod.yml exec backend \
+  python /app/scripts/migrate_desktop.py \
+  --sqlite /chemin/vers/courriers.db \
+  --uploads /chemin/vers/uploads
+```
 
 ## Application desktop (v1)
 
