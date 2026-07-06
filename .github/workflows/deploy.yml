@@ -29,6 +29,9 @@ jobs:
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: ci-test-key
+          UPLOAD_DIR: /tmp/ibi-ci-uploads
+          BACKUP_DIR: /tmp/ibi-ci-backups
+          MIGRATION_DIR: /tmp/ibi-ci-migration
 
       - name: Vérifier les secrets
         run: |
