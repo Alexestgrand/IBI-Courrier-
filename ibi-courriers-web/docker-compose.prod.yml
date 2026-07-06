@@ -31,8 +31,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       NOTIFY_EMAILS: ${NOTIFY_EMAILS:-}
+      BACKUP_DIR: /data/backups
     volumes:
       - uploads:/data/uploads
+      - backups:/data/backups
     depends_on:
       db:
         condition: service_healthy
@@ -48,3 +50,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  backups:

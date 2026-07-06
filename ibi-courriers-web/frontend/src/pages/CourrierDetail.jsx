@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, downloadPdf, downloadPiece, previewPiece } from "../api/client";
+import { api, downloadPdf, downloadPiece, previewPiece, printPdf, printPiece } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { BadgeStatut, formatDate, formatTaille } from "../utils";
 
@@ -99,16 +99,28 @@ export default function CourrierDetail() {
         <h2 className="page-title">{courrier.numero}</h2>
         <div className="actions-row" style={{ marginTop: 0 }}>
           {courrier.type === "sortant" && (
-            <button
-              className="btn btn-secondary"
-              onClick={() =>
-                downloadPdf(courrier.id, courrier.numero).catch((e) =>
-                  toast(e.message, "error")
-                )
-              }
-            >
-              Télécharger PDF
-            </button>
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() =>
+                  downloadPdf(courrier.id, courrier.numero).catch((e) =>
+                    toast(e.message, "error")
+                  )
+                }
+              >
+                Télécharger PDF
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() =>
+                  printPdf(courrier.id, courrier.numero).catch((e) =>
+                    toast(e.message, "error")
+                  )
+                }
+              >
+                Imprimer PDF
+              </button>
+            </>
           )}
           {peutModifier && !edition && (
             <button className="btn btn-secondary" onClick={() => setEdition(true)}>
@@ -244,14 +256,24 @@ export default function CourrierDetail() {
                   </button>
                   <button
                     className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={() =>
+                      printPiece(pj.id).catch((e) => toast(e.message, "error"))
+                    }
+                  >
+                    Imprimer
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
                     onClick={() =>
                       downloadPiece(pj.id, pj.nom_original).catch((e) =>
                         toast(e.message, "error")
                       )
                     }
                   >
-                  Télécharger
-                </button>
+                    Télécharger
+                  </button>
                 </div>
               </li>
             ))}

@@ -121,6 +121,24 @@ export const api = {
     }),
 
   audit: (params = {}) => request(`/audit${buildQuery(params)}`),
+
+  smtpStatus: () => request("/admin/smtp"),
+
+  testSmtp: (email) =>
+    request("/admin/smtp/test", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  listBackups: () => request("/admin/backups"),
+
+  createBackup: () => request("/admin/backups", { method: "POST" }),
+
+  restoreBackup: (nom_fichier, confirmation) =>
+    request("/admin/backups/restore", {
+      method: "POST",
+      body: JSON.stringify({ nom_fichier, confirmation }),
+    }),
 };
 
 function downloadBlob(path, filename) {
@@ -173,4 +191,53 @@ export function previewPiece(pieceId) {
     window.open(objectUrl, "_blank", "noopener,noreferrer");
     setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
   });
+}
+
+function printBlob(blob, titre = "Document") {
+  const objectUrl = URL.createObjectURL(blob);
+  const frame = document.createElement("iframe");
+  frame.style.position = "fixed";
+  frame.style.right = "0";
+  frame.style.bottom = "0";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "none";
+  frame.src = objectUrl;
+  document.body.appendChild(frame);
+  frame.onload = () => {
+    frame.contentWindow?.focus();
+    frame.contentWindow?.print();
+    setTimeout(() => {
+      document.body.removeChild(frame);
+      URL.revokeObjectURL(objectUrl);
+    }, 60000);
+  };
+}
+
+export function printPiece(pieceId) {
+  const token = getToken();
+  return fetch(`${API_BASE}/pieces-jointes/${pieceId}/view`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((r) => {
+      if (!r.ok) throw new Error("Impression impossible");
+      return r.blob();
+    })
+    .then((blob) => printBlob(blob));
+}
+
+export function printPdf(courrierId, numero) {
+  const token = getToken();
+  return fetch(`${API_BASE}/courriers/${courrierId}/pdf`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((r) => {
+      if (!r.ok) throw new Error("Impression impossible");
+      return r.blob();
+    })
+    .then((blob) => printBlob(blob, numero));
+}
+
+export function downloadBackup(nom) {
+  return downloadBlob(`/admin/backups/${encodeURIComponent(nom)}/download`, nom);
 }

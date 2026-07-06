@@ -128,6 +128,12 @@ class ChangementStatutRequest(BaseModel):
     observation: str | None = None
 
 
+class JournalDuJour(BaseModel):
+    date: str = ""
+    recus: list[CourrierListItem] = Field(default_factory=list)
+    traites: list[CourrierListItem] = Field(default_factory=list)
+
+
 class DashboardStats(BaseModel):
     total_courriers: int
     en_attente: int
@@ -135,7 +141,32 @@ class DashboardStats(BaseModel):
     valides: int
     urgents: int = 0
     par_entite: dict[str, int]
+    par_service: dict[str, int] = Field(default_factory=dict)
     recents: list[CourrierListItem] = Field(default_factory=list)
+    courriers_urgents: list[CourrierListItem] = Field(default_factory=list)
+    journal_du_jour: JournalDuJour = Field(default_factory=JournalDuJour)
+
+
+class BackupItem(BaseModel):
+    nom: str
+    type: str
+    taille_octets: int
+    date: datetime
+
+
+class RestoreBackupRequest(BaseModel):
+    nom_fichier: str
+    confirmation: str
+
+
+class SmtpStatusResponse(BaseModel):
+    enabled: bool
+    host: str | None = None
+    from_address: str | None = None
+
+
+class TestEmailRequest(BaseModel):
+    email: EmailStr
 
 
 class UserCreateRequest(BaseModel):

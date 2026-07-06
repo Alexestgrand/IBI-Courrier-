@@ -41,6 +41,19 @@ const ICONS = {
       <circle cx="12" cy="7" r="4" />
     </svg>
   ),
+  aide: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
+  admin: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  ),
   logout: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
@@ -61,8 +74,12 @@ export default function Layout() {
     { to: "/courriers/sortants", label: "Sortants", icon: ICONS.sortants },
     { to: "/recherche", label: "Recherche", icon: ICONS.recherche },
     ...(isAdmin
-      ? [{ to: "/admin/utilisateurs", label: "Utilisateurs", icon: ICONS.users }]
+      ? [
+          { to: "/admin/utilisateurs", label: "Utilisateurs", icon: ICONS.users },
+          { to: "/admin/sauvegardes", label: "Administration", icon: ICONS.admin },
+        ]
       : []),
+    { to: "/aide", label: "Aide", icon: ICONS.aide },
     { to: "/profil", label: "Profil", icon: ICONS.profil },
   ];
 

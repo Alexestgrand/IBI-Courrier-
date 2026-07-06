@@ -3,6 +3,44 @@ import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { BadgeStatut, formatDate } from "../utils";
 
+function TableCourriers({ courriers, colonnes = "standard" }) {
+  if (!courriers?.length) {
+    return <p className="empty-state">Aucun courrier.</p>;
+  }
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th>Type</th>
+            {colonnes === "urgent" && <th>Urgence</th>}
+            <th>Objet</th>
+            <th>Statut</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {courriers.map((c) => (
+            <tr key={c.id}>
+              <td>
+                <Link to={`/courriers/${c.id}`}>{c.numero}</Link>
+              </td>
+              <td>{c.type === "entrant" ? "Entrant" : "Sortant"}</td>
+              {colonnes === "urgent" && <td>{c.urgence}</td>}
+              <td>{c.objet}</td>
+              <td>
+                <BadgeStatut statut={c.statut} />
+              </td>
+              <td>{formatDate(c.created_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
 
@@ -19,6 +57,8 @@ export default function Dashboard() {
     { value: stats.valides, label: "Validés" },
     { value: stats.urgents, label: "Urgents actifs" },
   ];
+
+  const journal = stats.journal_du_jour || { date: "", recus: [], traites: [] };
 
   return (
     <div>
@@ -40,73 +80,85 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="panel">
-        <h3 className="panel__title">Courriers récents</h3>
-        {stats.recents?.length > 0 ? (
+      {stats.courriers_urgents?.length > 0 && (
+        <div className="panel panel--alert">
+          <h3 className="panel__title">Courriers urgents à traiter</h3>
+          <TableCourriers courriers={stats.courriers_urgents} colonnes="urgent" />
+        </div>
+      )}
+
+      <div className="dashboard-grid">
+        <div className="panel">
+          <h3 className="panel__title">
+            Journal du jour — reçus ({journal.recus?.length || 0})
+          </h3>
+          <TableCourriers courriers={journal.recus} />
+        </div>
+        <div className="panel">
+          <h3 className="panel__title">
+            Journal du jour — traités ({journal.traites?.length || 0})
+          </h3>
+          <TableCourriers courriers={journal.traites} />
+        </div>
+      </div>
+
+      <div className="dashboard-grid">
+        <div className="panel">
+          <h3 className="panel__title">Courriers par service (mois en cours)</h3>
+          {Object.keys(stats.par_service || {}).length > 0 ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th>Nombre</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(stats.par_service).map(([nom, count]) => (
+                    <tr key={nom}>
+                      <td>{nom}</td>
+                      <td>
+                        <span className="table-count">{count}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="empty-state">Aucune activité ce mois-ci.</p>
+          )}
+        </div>
+
+        <div className="panel">
+          <h3 className="panel__title">Courriers par filiale</h3>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>N°</th>
-                  <th>Type</th>
-                  <th>Objet</th>
-                  <th>Statut</th>
-                  <th>Date</th>
+                  <th>Filiale</th>
+                  <th>Nombre</th>
                 </tr>
               </thead>
               <tbody>
-                {stats.recents.map((c) => (
-                  <tr key={c.id}>
+                {Object.entries(stats.par_entite).map(([nom, count]) => (
+                  <tr key={nom}>
+                    <td>{nom}</td>
                     <td>
-                      <Link to={`/courriers/${c.id}`}>{c.numero}</Link>
+                      <span className="table-count">{count}</span>
                     </td>
-                    <td>{c.type === "entrant" ? "Entrant" : "Sortant"}</td>
-                    <td>{c.objet}</td>
-                    <td>
-                      <BadgeStatut statut={c.statut} />
-                    </td>
-                    <td>{formatDate(c.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <p className="empty-state">Aucun courrier récent.</p>
-        )}
-      </div>
-
-      <div className="panel">
-        <h3 className="panel__title">Courriers par filiale</h3>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Filiale</th>
-                <th>Nombre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(stats.par_entite).map(([nom, count]) => (
-                <tr key={nom}>
-                  <td>{nom}</td>
-                  <td>
-                    <span className="table-count">{count}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 
-      <div className="actions-row">
-        <Link to="/courriers/entrants" className="btn btn-secondary">
-          Voir les entrants
-        </Link>
-        <Link to="/courriers/sortants" className="btn btn-secondary">
-          Voir les sortants
-        </Link>
+      <div className="panel">
+        <h3 className="panel__title">Activité récente</h3>
+        <TableCourriers courriers={stats.recents} />
       </div>
     </div>
   );

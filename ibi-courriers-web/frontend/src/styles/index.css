@@ -838,9 +838,35 @@ tbody tr:last-child td {
   accent-color: var(--accent);
 }
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel--alert {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.aide-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.aide-list li {
+  margin-bottom: 0.5rem;
+}
+
 @media (max-width: 900px) {
   .stats-grid--5 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
   .app-shell {
     flex-direction: column;

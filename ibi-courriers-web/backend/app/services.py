@@ -3,7 +3,7 @@
 import os
 import re
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timezone
 
 from fastapi import UploadFile
 from sqlalchemy import func, or_
@@ -370,6 +370,8 @@ def obtenir_historique(db: Session, courrier_id: int) -> list[dict]:
 
 
 def stats_dashboard(db: Session) -> dict:
+    aujourd_hui = date.today()
+
     total = db.query(func.count(Courrier.id)).scalar() or 0
     en_attente = (
         db.query(func.count(Courrier.id)).filter(Courrier.statut == "en_attente").scalar()
@@ -400,6 +402,41 @@ def stats_dashboard(db: Session) -> dict:
     )
     par_entite = {nom: count for nom, count in par_entite_rows}
 
+    mois_actuel = datetime.now(timezone.utc).strftime("%Y-%m")
+    par_service: dict[str, int] = {}
+    for service in db.query(Service).filter(Service.actif.is_(True)).all():
+        count = (
+            db.query(func.count(Courrier.id))
+            .filter(
+                or_(
+                    Courrier.service_destinataire == service.nom,
+                    Courrier.service_emetteur == service.nom,
+                ),
+                func.to_char(
+                    func.coalesce(Courrier.updated_at, Courrier.created_at),
+                    "YYYY-MM",
+                )
+                == mois_actuel,
+            )
+            .scalar()
+            or 0
+        )
+        if count > 0:
+            par_service[service.nom] = count
+    par_service = dict(sorted(par_service.items(), key=lambda x: x[1], reverse=True))
+
+    urgents_rows = (
+        db.query(Courrier)
+        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .filter(
+            Courrier.urgence.in_(("urgent", "très urgent")),
+            Courrier.statut.notin_(("valide", "rejete", "archive")),
+        )
+        .order_by(Courrier.created_at.desc())
+        .limit(15)
+        .all()
+    )
+
     recents_rows = (
         db.query(Courrier)
         .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
@@ -408,6 +445,36 @@ def stats_dashboard(db: Session) -> dict:
         .all()
     )
 
+    recus_aujourdhui = (
+        db.query(Courrier)
+        .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+        .filter(func.date(Courrier.created_at) == aujourd_hui)
+        .order_by(Courrier.created_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    ids_traites = (
+        db.query(StatutLog.courrier_id)
+        .filter(
+            StatutLog.nouveau_statut.in_(("valide", "rejete", "archive")),
+            func.date(StatutLog.date) == aujourd_hui,
+        )
+        .distinct()
+        .all()
+    )
+    ids_traites_list = [row[0] for row in ids_traites]
+    traites_aujourdhui = []
+    if ids_traites_list:
+        traites_aujourdhui = (
+            db.query(Courrier)
+            .options(joinedload(Courrier.entite), joinedload(Courrier.pieces_jointes))
+            .filter(Courrier.id.in_(ids_traites_list))
+            .order_by(Courrier.updated_at.desc())
+            .limit(20)
+            .all()
+        )
+
     return {
         "total_courriers": total,
         "en_attente": en_attente,
@@ -415,7 +482,14 @@ def stats_dashboard(db: Session) -> dict:
         "valides": valides,
         "urgents": urgents,
         "par_entite": par_entite,
+        "par_service": par_service,
         "recents": [courrier_vers_liste(c) for c in recents_rows],
+        "courriers_urgents": [courrier_vers_liste(c) for c in urgents_rows],
+        "journal_du_jour": {
+            "date": aujourd_hui.isoformat(),
+            "recus": [courrier_vers_liste(c) for c in recus_aujourdhui],
+            "traites": [courrier_vers_liste(c) for c in traites_aujourdhui],
+        },
     }
 
 

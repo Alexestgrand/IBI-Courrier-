@@ -14,6 +14,32 @@ from app.models import Courrier, User
 logger = logging.getLogger(__name__)
 
 
+def envoyer_email_test(destinataire: str) -> None:
+    """Envoie un e-mail de test ; lève une exception en cas d'échec."""
+    if not settings.smtp_enabled:
+        raise ValueError("SMTP désactivé. Activez SMTP_ENABLED dans la configuration.")
+
+    msg = MIMEMultipart()
+    msg["From"] = settings.smtp_from
+    msg["To"] = destinataire
+    msg["Subject"] = "[IBI Courriers] E-mail de test"
+    msg.attach(
+        MIMEText(
+            "Ceci est un e-mail de test envoyé depuis IBI Courriers Web.\n"
+            "Si vous recevez ce message, la configuration SMTP est correcte.",
+            "plain",
+            "utf-8",
+        )
+    )
+
+    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as smtp:
+        if settings.smtp_use_tls:
+            smtp.starttls()
+        if settings.smtp_user:
+            smtp.login(settings.smtp_user, settings.smtp_password)
+        smtp.sendmail(settings.smtp_from, [destinataire], msg.as_string())
+
+
 def _envoyer(destinataires: list[str], sujet: str, corps: str) -> None:
     if not settings.smtp_enabled or not destinataires:
         return

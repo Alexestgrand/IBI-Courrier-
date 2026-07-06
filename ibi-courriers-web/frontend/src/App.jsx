@@ -10,6 +10,8 @@ import NouveauSortant from "./pages/NouveauSortant";
 import CourrierDetail from "./pages/CourrierDetail";
 import Recherche from "./pages/Recherche";
 import Utilisateurs from "./pages/Utilisateurs";
+import Sauvegardes from "./pages/Sauvegardes";
+import Aide from "./pages/Aide";
 import Profil from "./pages/Profil";
 
 function PrivateRoute({ children }) {
@@ -66,11 +68,20 @@ export default function App() {
           <Route path="courriers/:id" element={<CourrierDetail />} />
           <Route path="recherche" element={<Recherche />} />
           <Route path="profil" element={<Profil />} />
+          <Route path="aide" element={<Aide />} />
           <Route
             path="admin/utilisateurs"
             element={
               <AdminRoute>
                 <Utilisateurs />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/sauvegardes"
+            element={
+              <AdminRoute>
+                <Sauvegardes />
               </AdminRoute>
             }
           />
