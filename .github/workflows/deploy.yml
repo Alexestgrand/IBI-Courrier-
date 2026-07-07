@@ -60,22 +60,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Choisir le mode de déploiement
+      - name: Détecter les méthodes de déploiement
         run: |
+          HAS_WEBHOOK=false
+          HAS_SSH=false
           if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] && [ -n "${{ secrets.DEPLOY_WEBHOOK_SECRET }}" ]; then
-            echo "DEPLOY_MODE=webhook" >> "$GITHUB_ENV"
-            echo "Mode webhook HTTPS (recommandé)"
-          elif [ -n "${{ secrets.VPS_HOST }}" ] && [ -n "${{ secrets.VPS_USER }}" ] && [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
-            echo "DEPLOY_MODE=ssh" >> "$GITHUB_ENV"
-            echo "Mode SSH (secours)"
-          else
-            echo "Configurer DEPLOY_WEBHOOK_URL + DEPLOY_WEBHOOK_SECRET (recommandé)"
-            echo "ou VPS_HOST + VPS_USER + VPS_SSH_KEY"
+            HAS_WEBHOOK=true
+            echo "Webhook HTTPS : oui"
+          fi
+          if [ -n "${{ secrets.VPS_HOST }}" ] && [ -n "${{ secrets.VPS_USER }}" ] && [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
+            HAS_SSH=true
+            echo "SSH : oui"
+          fi
+          if [ "$HAS_WEBHOOK" = false ] && [ "$HAS_SSH" = false ]; then
+            echo "Configurer DEPLOY_WEBHOOK_URL + DEPLOY_WEBHOOK_SECRET et/ou VPS_HOST + VPS_USER + VPS_SSH_KEY"
             exit 1
           fi
+          echo "HAS_WEBHOOK=$HAS_WEBHOOK" >> "$GITHUB_ENV"
+          echo "HAS_SSH=$HAS_SSH" >> "$GITHUB_ENV"
 
       - name: Déployer via webhook HTTPS
-        if: env.DEPLOY_MODE == 'webhook'
+        if: env.HAS_WEBHOOK == 'true'
+        id: webhook
+        continue-on-error: true
         env:
           DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
           DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
@@ -85,7 +92,7 @@ jobs:
           ibi-courriers-web/scripts/github-deploy-webhook.sh "$BODY"
 
       - name: Configurer SSH
-        if: env.DEPLOY_MODE == 'ssh'
+        if: steps.webhook.outcome == 'failure' || (env.HAS_WEBHOOK == 'false' && env.HAS_SSH == 'true')
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -93,7 +100,7 @@ jobs:
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Tester la connectivité SSH
-        if: env.DEPLOY_MODE == 'ssh'
+        if: steps.webhook.outcome == 'failure' || (env.HAS_WEBHOOK == 'false' && env.HAS_SSH == 'true')
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
@@ -101,11 +108,14 @@ jobs:
           nc -zv -w 15 "${VPS_HOST}" 22
 
       - name: Déployer via SSH
-        if: env.DEPLOY_MODE == 'ssh'
+        if: (steps.webhook.outcome == 'failure' || env.HAS_WEBHOOK == 'false') && env.HAS_SSH == 'true'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
+          if [ "${{ steps.webhook.outcome }}" = "failure" ]; then
+            echo "Webhook en échec — bascule SSH"
+          fi
           SSH_OPTS="-i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=3"
           for attempt in 1 2 3; do
             echo "Tentative SSH ${attempt}/3..."
@@ -115,7 +125,7 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           cd ibi-courriers-web
-          chmod +x scripts/deploy.sh scripts/backup.sh scripts/wait-health.sh 2>/dev/null || true
+          chmod +x scripts/deploy.sh scripts/backup.sh scripts/wait-health.sh scripts/install-deploy-webhook.sh 2>/dev/null || true
           ./scripts/deploy.sh
           echo "Déploiement GitHub Actions OK"
           ENDSSH
@@ -127,5 +137,11 @@ jobs:
               sleep 45
             fi
           done
-          echo "SSH impossible — préférer le webhook HTTPS (voir deploy/DEPLOY.md)"
+          echo "SSH impossible — voir deploy/DEPLOY.md (webhook 502 : systemctl restart ibi-deploy-webhook)"
+          exit 1
+
+      - name: Échec si webhook KO sans secours SSH
+        if: always() && steps.webhook.outcome == 'failure' && env.HAS_SSH != 'true'
+        run: |
+          echo "Webhook en échec et SSH non configuré"
           exit 1
