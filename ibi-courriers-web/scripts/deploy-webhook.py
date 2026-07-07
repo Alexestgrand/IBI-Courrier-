@@ -65,7 +65,7 @@ class DeployWebhookHandler(BaseHTTPRequestHandler):
         if self.path.rstrip("/") != "/hooks/deploy":
             self._send_json(404, {"error": "not_found"})
             return
-        if not _auth_ok():
+        if not self._auth_ok():
             self._send_json(401, {"error": "unauthorized"})
             return
         if not _deploy_lock.acquire(blocking=False):
