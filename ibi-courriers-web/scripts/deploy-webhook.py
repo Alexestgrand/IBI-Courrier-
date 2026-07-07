@@ -27,6 +27,12 @@ class DeployWebhookHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
         sys.stderr.write(f"[deploy-webhook] {self.address_string()} - {fmt % args}\n")
 
+    def do_GET(self) -> None:
+        if self.path.rstrip("/") == "/hooks/deploy/health":
+            self._send_json(200, {"status": "ready"})
+            return
+        self._send_json(404, {"error": "not_found"})
+
     def _send_json(self, code: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode()
         self.send_response(code)
@@ -109,6 +115,7 @@ def main() -> None:
     if not SECRET:
         print("DEPLOY_WEBHOOK_SECRET est requis.", file=sys.stderr)
         sys.exit(1)
+    ThreadingHTTPServer.allow_reuse_address = True
     server = ThreadingHTTPServer((HOST, PORT), DeployWebhookHandler)
     print(f"Webhook deploy actif sur http://{HOST}:{PORT}/hooks/deploy", flush=True)
     server.serve_forever()

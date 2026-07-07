@@ -2,6 +2,8 @@
 
 GitHub Actions déploie via **HTTPS (webhook)** plutôt que SSH port 22, car OVH bloque souvent les IP des runners GitHub.
 
+_Dernière vérification deploy : 2026-07-07._
+
 ## Installation unique sur le VPS
 
 Connectez-vous en SSH :
@@ -54,6 +56,7 @@ cd ~/IBI-Courrier-/ibi-courriers-web
 
 | Symptôme | Action |
 |----------|--------|
+| Webhook HTTP **502** | `sudo systemctl restart ibi-deploy-webhook` puis `curl http://127.0.0.1:9089/hooks/deploy/health` |
 | GitHub : `401 unauthorized` | Vérifier `DEPLOY_WEBHOOK_SECRET` (GitHub = fichier `~/.config/ibi-deploy-webhook.env`) |
 | GitHub : timeout / 502 | `sudo systemctl status ibi-deploy-webhook` et logs `journalctl -u ibi-deploy-webhook -f` |
 | Webhook OK mais site inchangé | Vérifier `git log -1` dans `~/IBI-Courrier-` |

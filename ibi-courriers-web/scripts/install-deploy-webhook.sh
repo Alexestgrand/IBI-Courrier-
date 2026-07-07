@@ -53,6 +53,13 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now "${SERVICE_NAME}.service"
+sudo systemctl restart "${SERVICE_NAME}.service"
+sleep 1
+if curl -sf "http://127.0.0.1:9089/hooks/deploy/health" >/dev/null; then
+  echo "==> Webhook local OK (port 9089)"
+else
+  echo "ATTENTION: webhook local inaccessible — journalctl -u ${SERVICE_NAME} -n 30"
+fi
 sudo systemctl status "${SERVICE_NAME}.service" --no-pager -l || true
 
 echo ""
