@@ -12,10 +12,10 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-HOST = os.environ.get("DEPLOY_WEBHOOK_HOST", "127.0.0.1")
-PORT = int(os.environ.get("DEPLOY_WEBHOOK_PORT", "9089"))
-SECRET = os.environ.get("DEPLOY_WEBHOOK_SECRET", "")
-REPO_DIR = Path(os.environ.get("DEPLOY_REPO_DIR", Path.home() / "IBI-Courrier-"))
+HOST = os.environ.get("DEPLOY_WEBHOOK_HOST", "127.0.0.1").strip()
+PORT = int(os.environ.get("DEPLOY_WEBHOOK_PORT", "9089").strip())
+SECRET = os.environ.get("DEPLOY_WEBHOOK_SECRET", "").strip()
+REPO_DIR = Path(os.environ.get("DEPLOY_REPO_DIR", str(Path.home() / "IBI-Courrier-")).strip())
 DEPLOY_SCRIPT = REPO_DIR / "ibi-courriers-web" / "scripts" / "deploy.sh"
 
 _deploy_lock = threading.Lock()
@@ -116,7 +116,11 @@ def main() -> None:
         print("DEPLOY_WEBHOOK_SECRET est requis.", file=sys.stderr)
         sys.exit(1)
     ThreadingHTTPServer.allow_reuse_address = True
-    server = ThreadingHTTPServer((HOST, PORT), DeployWebhookHandler)
+    try:
+        server = ThreadingHTTPServer((HOST, PORT), DeployWebhookHandler)
+    except OSError as exc:
+        print(f"Impossible d'écouter sur {HOST}:{PORT} — {exc}", file=sys.stderr)
+        sys.exit(1)
     print(f"Webhook deploy actif sur http://{HOST}:{PORT}/hooks/deploy", flush=True)
     server.serve_forever()
 

@@ -43,9 +43,12 @@ User=${USER}
 Group=${USER}
 WorkingDirectory=${HOME}
 EnvironmentFile=${ENV_FILE}
-ExecStart=/usr/bin/python3 ${SCRIPT_DIR}/deploy-webhook.py
-Restart=on-failure
-RestartSec=5
+ExecStart=/usr/bin/python3 -u ${SCRIPT_DIR}/deploy-webhook.py
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=0
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
