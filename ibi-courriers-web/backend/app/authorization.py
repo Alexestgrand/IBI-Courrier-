@@ -96,6 +96,7 @@ def obtenir_courrier_autorise(
             joinedload(Courrier.entite),
             joinedload(Courrier.pieces_jointes),
             joinedload(Courrier.signataire),
+            joinedload(Courrier.createur),
         )
     courrier = query.first()
     if courrier is None:

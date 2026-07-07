@@ -124,6 +124,7 @@ class CourrierDetail(BaseModel):
     chemin_pdf: str | None = None
     signe_par_nom: str | None = None
     signe_le: datetime | None = None
+    createur_nom: str | None = None
     peut_signer: bool = False
     peut_supprimer: bool = False
     pieces_jointes: list[PieceJointeResponse] = Field(default_factory=list)

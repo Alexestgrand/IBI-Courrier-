@@ -37,6 +37,12 @@ Expose environnement, espace disque, détails base de données.
    - Alerte e-mail en cas de down (code ≠ 200)
 3. Optionnel : mot-clé `ok` dans le corps de la réponse
 
+> Statut : UptimeRobot configuré sur `https://courriersibi.com/api/health`.
+
+## Déploiement GitHub Actions
+
+Voir [`DEPLOY.md`](DEPLOY.md) — webhook HTTPS recommandé (SSH port 22 souvent bloqué depuis GitHub).
+
 ## Caddy (headers sécurité)
 
 Sur le VPS :

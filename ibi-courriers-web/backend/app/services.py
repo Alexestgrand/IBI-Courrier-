@@ -147,6 +147,10 @@ def courrier_vers_detail(c: Courrier, role: str, user: User | None = None) -> di
     if getattr(c, "signataire", None):
         signe_par_nom = f"{c.signataire.prenom} {c.signataire.nom}"
 
+    createur_nom = None
+    if getattr(c, "createur", None):
+        createur_nom = f"{c.createur.prenom} {c.createur.nom}"
+
     import_scan = c.corps_courrier == "(Courrier importé - PDF scanné)"
     peut_signer = bool(
         user
@@ -180,6 +184,7 @@ def courrier_vers_detail(c: Courrier, role: str, user: User | None = None) -> di
         "chemin_pdf": c.chemin_pdf,
         "signe_par_nom": signe_par_nom,
         "signe_le": c.signe_le,
+        "createur_nom": createur_nom,
         "peut_signer": peut_signer,
         "peut_supprimer": bool(user and peut_supprimer_courrier(user, c)),
         "pieces_jointes": c.pieces_jointes,

@@ -58,14 +58,34 @@ jobs:
     timeout-minutes: 20
     needs: [test-backend, build-frontend]
     steps:
-      - name: Vérifier les secrets
+      - uses: actions/checkout@v4
+
+      - name: Choisir le mode de déploiement
         run: |
-          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "Secret VPS_HOST manquant"; exit 1; fi
-          if [ -z "${{ secrets.VPS_USER }}" ]; then echo "Secret VPS_USER manquant"; exit 1; fi
-          if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then echo "Secret VPS_SSH_KEY manquant"; exit 1; fi
-          echo "Secrets OK"
+          if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] && [ -n "${{ secrets.DEPLOY_WEBHOOK_SECRET }}" ]; then
+            echo "DEPLOY_MODE=webhook" >> "$GITHUB_ENV"
+            echo "Mode webhook HTTPS (recommandé)"
+          elif [ -n "${{ secrets.VPS_HOST }}" ] && [ -n "${{ secrets.VPS_USER }}" ] && [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "DEPLOY_MODE=ssh" >> "$GITHUB_ENV"
+            echo "Mode SSH (secours)"
+          else
+            echo "Configurer DEPLOY_WEBHOOK_URL + DEPLOY_WEBHOOK_SECRET (recommandé)"
+            echo "ou VPS_HOST + VPS_USER + VPS_SSH_KEY"
+            exit 1
+          fi
+
+      - name: Déployer via webhook HTTPS
+        if: env.DEPLOY_MODE == 'webhook'
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+        run: |
+          chmod +x ibi-courriers-web/scripts/github-deploy-webhook.sh
+          BODY='{"source":"github-actions","ref":"${{ github.sha }}","branch":"main"}'
+          ibi-courriers-web/scripts/github-deploy-webhook.sh "$BODY"
 
       - name: Configurer SSH
+        if: env.DEPLOY_MODE == 'ssh'
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -73,15 +93,15 @@ jobs:
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Tester la connectivité SSH
+        if: env.DEPLOY_MODE == 'ssh'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          echo "Résolution DNS :"
-          getent hosts "${VPS_HOST}" || nslookup "${VPS_HOST}" || true
           echo "Test port 22 (timeout 15s) :"
           nc -zv -w 15 "${VPS_HOST}" 22
 
-      - name: Déployer sur le VPS
+      - name: Déployer via SSH
+        if: env.DEPLOY_MODE == 'ssh'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -96,9 +116,7 @@ jobs:
           git reset --hard origin/main
           cd ibi-courriers-web
           chmod +x scripts/deploy.sh scripts/backup.sh scripts/wait-health.sh 2>/dev/null || true
-          docker compose -f docker-compose.prod.yml up -d --build
-          docker compose -f docker-compose.prod.yml ps
-          ./scripts/wait-health.sh
+          ./scripts/deploy.sh
           echo "Déploiement GitHub Actions OK"
           ENDSSH
             then
@@ -109,5 +127,5 @@ jobs:
               sleep 45
             fi
           done
-          echo "SSH impossible après 3 tentatives — vérifier pare-feu OVH (port 22) et fail2ban sur le VPS"
+          echo "SSH impossible — préférer le webhook HTTPS (voir deploy/DEPLOY.md)"
           exit 1

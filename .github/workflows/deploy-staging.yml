@@ -59,20 +59,38 @@ jobs:
     needs: [test-backend, build-frontend]
 
     steps:
-      - name: Vérifier les secrets
+      - uses: actions/checkout@v4
+
+      - name: Choisir le mode de déploiement
         run: |
-          if [ -z "${{ secrets.VPS_HOST }}" ]; then echo "Secret VPS_HOST manquant"; exit 1; fi
-          if [ -z "${{ secrets.VPS_USER }}" ]; then echo "Secret VPS_USER manquant"; exit 1; fi
-          if [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then echo "Secret VPS_SSH_KEY manquant"; exit 1; fi
+          if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] && [ -n "${{ secrets.DEPLOY_WEBHOOK_SECRET }}" ]; then
+            echo "DEPLOY_MODE=webhook" >> "$GITHUB_ENV"
+          elif [ -n "${{ secrets.VPS_HOST }}" ] && [ -n "${{ secrets.VPS_USER }}" ] && [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "DEPLOY_MODE=ssh" >> "$GITHUB_ENV"
+          else
+            exit 1
+          fi
+
+      - name: Déployer staging via webhook
+        if: env.DEPLOY_MODE == 'webhook'
+        env:
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+        run: |
+          chmod +x ibi-courriers-web/scripts/github-deploy-webhook.sh
+          BODY='{"source":"github-actions","ref":"${{ github.sha }}","branch":"staging","compose_file":"docker-compose.staging.yml","health_url":"http://127.0.0.1:8081/api/health"}'
+          ibi-courriers-web/scripts/github-deploy-webhook.sh "$BODY"
 
       - name: Configurer SSH
+        if: env.DEPLOY_MODE == 'ssh'
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Déployer staging
+      - name: Déployer staging via SSH
+        if: env.DEPLOY_MODE == 'ssh'
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -84,9 +102,10 @@ jobs:
           git fetch origin staging
           git reset --hard origin/staging
           cd ibi-courriers-web
-          chmod +x scripts/wait-health.sh 2>/dev/null || true
-          docker compose -f docker-compose.staging.yml up -d --build
-          docker compose -f docker-compose.staging.yml ps
-          ./scripts/wait-health.sh http://127.0.0.1:8081/api/health
+          export DEPLOY_BRANCH=staging
+          export DEPLOY_COMPOSE_FILE=docker-compose.staging.yml
+          export DEPLOY_HEALTH_URL=http://127.0.0.1:8081/api/health
+          chmod +x scripts/deploy.sh scripts/wait-health.sh 2>/dev/null || true
+          ./scripts/deploy.sh
           echo "Staging déployé sur port 8081"
           ENDSSH

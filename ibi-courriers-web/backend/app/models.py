@@ -92,6 +92,7 @@ class Courrier(Base):
 
     entite: Mapped["Entite"] = relationship(back_populates="courriers")
     signataire: Mapped["User | None"] = relationship(foreign_keys=[signe_par_id])
+    createur: Mapped["User | None"] = relationship(foreign_keys=[created_by])
     pieces_jointes: Mapped[list["PieceJointe"]] = relationship(
         back_populates="courrier", cascade="all, delete-orphan"
     )

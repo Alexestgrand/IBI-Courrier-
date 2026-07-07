@@ -5,7 +5,7 @@ Application web de gestion des courriers pour le Groupe IBI — accès multi-uti
 ## Fonctionnalités
 
 - Connexion sécurisée (JWT, sessions persistantes 8 h)
-- **Courriers entrants** : création, liste, fiche, modification, pièces jointes
+- **Courriers entrants** : création (wizard 3 étapes + OCR), liste, fiche, modification, suppression, pièces jointes
 - **Courriers sortants** : création (saisie + PDF auto ou import PDF scanné), liste, téléchargement PDF
 - Workflow de validation par rôle (réception → transmis, DG → validé/rejeté)
 - **Recherche avancée** multi-critères (type, statut, service, urgence, dates, filiale)
@@ -127,46 +127,31 @@ ibi-courriers-web/
 
 ## Déploiement automatique (GitHub Actions)
 
-Chaque `push` sur `main` qui modifie `ibi-courriers-web/` déclenche un déploiement automatique sur le VPS.
+Chaque `push` sur `main` qui modifie `ibi-courriers-web/` déclenche tests, build puis déploiement.
 
-### 1. Créer une clé SSH pour GitHub Actions (sur le VPS)
+**Méthode recommandée : webhook HTTPS** (contourne les blocages SSH depuis GitHub). Guide complet : [`deploy/DEPLOY.md`](deploy/DEPLOY.md).
+
+### 1. Installer le webhook sur le VPS (une fois)
 
 ```bash
 ssh deploy@VOTRE_IP
-ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/github_actions -N ""
-cat ~/.ssh/github_actions.pub >> ~/.ssh/authorized_keys
-cat ~/.ssh/github_actions   # copier la clé PRIVÉE
+cd ~/IBI-Courrier-/ibi-courriers-web
+./scripts/install-deploy-webhook.sh
+sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
 ```
 
-### 2. Ajouter les secrets GitHub
-
-Dans le dépôt GitHub → **Settings → Secrets and variables → Actions** :
+### 2. Secrets GitHub
 
 | Secret | Valeur |
 |--------|--------|
-| `VPS_HOST` | IP ou hostname du VPS (ex. `votre-serveur.example.com`) |
-| `VPS_USER` | `deploy` |
-| `VPS_SSH_KEY` | clé privée complète (voir format ci-dessous) |
+| `DEPLOY_WEBHOOK_URL` | `https://courriersibi.com/hooks/deploy` |
+| `DEPLOY_WEBHOOK_SECRET` | affiché par le script d'installation |
 
-**Format du secret `VPS_SSH_KEY`** — copier-coller **tout** le fichier, y compris :
+### 3. Secours SSH (optionnel)
 
-```
------BEGIN OPENSSH PRIVATE KEY-----
-...
------END OPENSSH PRIVATE KEY-----
-```
+Si le webhook n'est pas configuré, les secrets `VPS_HOST`, `VPS_USER` et `VPS_SSH_KEY` sont utilisés (souvent bloqués par le pare-feu OVH depuis GitHub).
 
-Vérifier qu'il n'y a **pas d'espace** avant/après, et qu'une **ligne vide** existe à la fin.
-
-Test manuel depuis votre Mac :
-
-```bash
-ssh -i ~/.ssh/github_actions deploy@VOTRE_IP_OU_HOSTNAME "echo SSH OK"
-```
-
-Si ça fonctionne, la même clé dans GitHub Actions fonctionnera.
-
-### 3. Déploiement manuel (si besoin)
+### 4. Déploiement manuel
 
 ```bash
 cd ~/IBI-Courrier-/ibi-courriers-web

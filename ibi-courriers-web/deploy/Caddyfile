@@ -13,7 +13,14 @@ courriersibi.com, www.courriersibi.com {
         -Server
     }
 
-    reverse_proxy 127.0.0.1:8080
+    @deploy path /hooks/deploy*
+    handle @deploy {
+        reverse_proxy 127.0.0.1:9089
+    }
+
+    handle {
+        reverse_proxy 127.0.0.1:8080
+    }
 }
 
 # Staging (optionnel) — activer après configuration DNS

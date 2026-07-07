@@ -276,6 +276,9 @@ export default function CourrierDetail() {
               {courrier.signe_le ? ` — ${formatDate(courrier.signe_le)}` : ""}
             </span>
           )}
+          {courrier.createur_nom && (
+            <span className="text-secondary">Créé par {courrier.createur_nom}</span>
+          )}
         </div>
 
         {edition ? (
